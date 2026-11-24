@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# environment
+.env
+
+# review run workspaces created by slr.py (real user data -- keep out of the repo)
+runs/
+runs_web/
+server.log
+
+# A real run writes output/ and pdfs/ into the working directory -- keep them out
+# of git. The committed demonstration run lives under examples/demo_output/ and
+# examples/demo_pdfs/ instead.
+output/
+pdfs/
+
+# Scratch testbed for reproducing bugs against a pipx-style install -- not
+# project source, never committed.
+_testbed/
+
+# Temporary test / inspection artifacts
+*.log
+*.html
+!web/*.html
+api_test*.json
+auth_state.json
+call_create_project.json
+check_*.json
+click_*.json
+create_project_*.json
+debug_*.json
+fill_form*.json
+get_*.json
+handle_*.json
+list_*.json
+local_storage.json
+open_workspace.json
+page_snapshot_*.json
+probe_vue_instance*
+sample_errors.json
+set_*.json
+submit_form.json
+vue_instance_*.json
+scratch_*.py
+test_artifacts/

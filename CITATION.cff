@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "slr-pipeline"
+abstract: "A guided, auditable systematic-literature-review pipeline: search, dedup, screen, extract, appraise, and report against PRISMA 2020, with citation verification and a full provenance record."
+authors:
+  - family-names: "Hossain"
+    given-names: "Md Nayeem"
+version: "1.3.1"
+date-released: "2026-11-24"
+license: "MIT"
+repository-code: "https://github.com/nayeem-hossain/slr-pipeline"
+keywords:
+  - systematic literature review
+  - PRISMA 2020
+  - citation verification
+  - provenance
+  - research software
