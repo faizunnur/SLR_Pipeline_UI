@@ -355,7 +355,7 @@ This repository's licensing is split by content type:
 - **Code** (`slr.py`, `src/srp/`, and every script under `src/scripts/` -- `search.py`,
   `dedup.py`, `screen.py`, `assist.py`, `download.py`, `verify_citations.py`,
   `extract.py`, `figures.py`, `export.py`) is licensed under the **MIT
-  License** -- see [`LICENSE`](LICENSE).
+  License** -- see [`LICENSE.txt`](LICENSE.txt).
 - **Documentation** (this README and `examples/README.md`) is licensed under
   **Creative Commons Attribution 4.0 International (CC-BY-4.0)** -- see
   [`LICENSE-docs`](LICENSE-docs). You're free to reuse, adapt, and redistribute
