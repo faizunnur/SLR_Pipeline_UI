@@ -165,7 +165,7 @@ def download(url: str, dest: Path, mailto: str,
     final path looking like a complete article."""
     tmp = dest.with_suffix(dest.suffix + ".part")
     try:
-        headers = {"User-Agent": f"systematic-review-pipeline/1.0 (mailto:{mailto})"}
+        headers = {"User-Agent": f"slr-pipeline/1.0 (mailto:{mailto})"}
         r = requests.get(url, headers=headers, timeout=60, stream=True)
         content_type = r.headers.get("Content-Type", "").lower()
         if r.status_code != 200 or "pdf" not in content_type:

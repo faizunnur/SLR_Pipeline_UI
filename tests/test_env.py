@@ -2,7 +2,7 @@
 load_dotenv()'s default .env path used to resolve relative to wherever
 srp/env.py itself was installed (REPO_ROOT = Path(__file__).parent.parent) --
 correct for a git clone, since the documented workflow `cd
-systematic-review-pipeline` first makes cwd == repo root, but for a pip/pipx
+slr-pipeline` first makes cwd == repo root, but for a pip/pipx
 install srp/env.py lives inside site-packages, so the old default resolved to
 somewhere buried in the installed package -- nowhere a user would ever
 plausibly put a .env file. It now resolves relative to the current working

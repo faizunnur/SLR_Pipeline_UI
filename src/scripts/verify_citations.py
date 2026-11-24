@@ -53,7 +53,7 @@ def _crossref_headers() -> dict:
     contact mailto in the User-Agent. The address comes from the same MAILTO
     environment variable the rest of the pipeline is configured with."""
     mailto = os.environ.get("MAILTO", "").strip()
-    ua = "systematic-review-pipeline verify_citations"
+    ua = "slr-pipeline verify_citations"
     if mailto:
         ua += f" (mailto:{mailto})"
     return {"User-Agent": ua}

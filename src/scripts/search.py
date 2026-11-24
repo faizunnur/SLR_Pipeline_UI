@@ -85,8 +85,8 @@ _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)
 
 from srp.env import load_dotenv
 
-USER_AGENT_TEMPLATE = "systematic-review-pipeline/1.0 (mailto:{mailto})"
-NCBI_TOOL_NAME = "systematic-review-pipeline"
+USER_AGENT_TEMPLATE = "slr-pipeline/1.0 (mailto:{mailto})"
+NCBI_TOOL_NAME = "slr-pipeline"
 
 # --- API internals: documented rate limits ---
 # Each value is the MINIMUM SECONDS BETWEEN REQUESTS to that API, derived from

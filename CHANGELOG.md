@@ -6,6 +6,17 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-11-25
+
+### Changed
+
+- The package distribution is renamed from `systematic-review-pipeline` to
+  `slr-pipeline`, matching the repository and project name. The `slr`
+  command is unchanged. An existing pipx install under the old name keeps
+  working but will not receive this or later versions through
+  `pipx upgrade`; reinstall once: `pipx uninstall systematic-review-pipeline`,
+  then `pipx install git+https://github.com/nayeem-hossain/slr-pipeline.git`.
+
 ## [1.3.2] - 2026-11-25
 
 ### Removed

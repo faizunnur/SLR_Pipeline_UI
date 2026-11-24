@@ -85,7 +85,7 @@ counting behavior partway through a review's own corpus, which is worse than
 staying on the version you started with). Update yourself with:
 
 ```bash
-pipx upgrade --force systematic-review-pipeline
+pipx upgrade --force slr-pipeline
 ```
 
 The `--force` matters here specifically because this installs from
@@ -100,13 +100,13 @@ package itself upgrade correctly (`pipx list` shows the new version) while
 
 ```
 File exists at C:\Users\<you>\.local\bin\slr.exe and does not match
-...\pipx\venvs\systematic-review-pipeline\Scripts\slr.exe. Not modifying.
+...\pipx\venvs\slr-pipeline\Scripts\slr.exe. Not modifying.
 ```
 
 `--force` tells pipx to overwrite it as part of the same upgrade -- no
 separate reinstall step needed. If you already hit this warning on a plain
 `pipx upgrade`, either re-run with `--force` or run
-`pipx reinstall systematic-review-pipeline` once to get back in sync.
+`pipx reinstall slr-pipeline` once to get back in sync.
 
 You can also check on demand from the guided TUI's consolidation menu's
 **"Check for updates"** action, which always reports a result (up to date /
