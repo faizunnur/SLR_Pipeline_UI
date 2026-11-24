@@ -6,6 +6,20 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-11-25
+
+### Changed
+
+- Documentation only; no code changes. The README installation section
+  now presents the PyPI release as the primary install route
+  (`pipx install slr-pipeline`), with installation from GitHub kept as
+  the alternative for the latest code, and the upgrade guidance now
+  distinguishes PyPI installs from git installs. This release exists so
+  that the project page on PyPI carries the corrected README, which
+  PyPI freezes into each release at upload time.
+- The README license link now points at `LICENSE.txt`, the file's name
+  since the 1.3.1 restructure.
+
 ## [1.3.3] - 2026-11-25
 
 ### Changed
