@@ -5,8 +5,8 @@ run of the pipeline, so you can see the CSV and figure shapes without having to
 run the scripts yourself first. `demo_output/` holds the full, un-curated CSV
 outputs this sample is drawn from -- a completed demonstration run. The
 downloaded open-access PDFs from that same run aren't tracked here (~50 MB,
-example data only) -- they're attached as `demo_pdfs.zip` on the
-[latest GitHub release](https://github.com/nayeem-hossain/slr-pipeline/releases/latest).
+example data only) and are not distributed with the releases; the CSVs in
+`demo_output/` are the demonstration record.
 
 The worked example domain is machine-learning / AI-based intrusion detection
 systems (ML-IDS) -- see the README's "Worked example" section for the full
