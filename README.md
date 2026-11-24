@@ -40,10 +40,12 @@ pipeline and the method do not change.
 
 ## Installing
 
-**Quickest: `pipx install` directly from GitHub** -- no `git clone` needed,
-works identically on Windows/macOS/Linux, and pulls in every dependency
-(pandas, matplotlib, etc. -- the full `dependencies` list in `pyproject.toml`)
-automatically.
+**Quickest: `pipx install slr-pipeline`** -- the package is published on
+PyPI, so no `git clone` is needed. It works identically on
+Windows/macOS/Linux and pulls in every dependency (pandas, matplotlib,
+etc. -- the full `dependencies` list in `pyproject.toml`) automatically.
+To run the latest code straight from GitHub instead:
+`pipx install git+https://github.com/nayeem-hossain/slr-pipeline.git`.
 
 `pipx` is a separate tool, not something Python/pip ships with -- if
 `pipx install ...` prints "not recognized as an internal or external
@@ -61,14 +63,14 @@ python -m pipx ensurepath
 Then install and run the tool itself:
 
 ```bash
-pipx install git+https://github.com/nayeem-hossain/slr-pipeline.git
+pipx install slr-pipeline
 slr
 ```
 
 (`pipx` isolates the install in its own environment so it can't collide with
-another project's packages. Plain `pip install git+...` also works if you'd
-rather not use pipx -- but then you're managing your own virtual environment
-instead of getting one for free.)
+another project's packages. Plain `pip install slr-pipeline` also works if
+you'd rather not use pipx -- but then you're managing your own virtual
+environment instead of getting one for free.)
 
 This installs the exact same code as the git-clone paths below --
 `src/scripts/*.py` ship alongside `src/slr.py` and remain individually readable and
@@ -85,12 +87,13 @@ counting behavior partway through a review's own corpus, which is worse than
 staying on the version you started with). Update yourself with:
 
 ```bash
-pipx upgrade --force slr-pipeline
+pipx upgrade slr-pipeline
 ```
 
-The `--force` matters here specifically because this installs from
-`git+https://...` rather than a pinned PyPI release, so every upgrade
-rebuilds the wheel from source -- the launcher pip generates for `slr.exe`
+If you installed from GitHub rather than PyPI, add `--force`:
+`pipx upgrade --force slr-pipeline`. The `--force` matters for git installs
+specifically, because every upgrade rebuilds the wheel from source -- the
+launcher pip generates for `slr.exe`
 comes out byte-different almost every time even when nothing you'd care
 about changed, and pipx's own shim-safety-check (which protects a shim it
 doesn't recognize as its own from being silently overwritten) flags that as
