@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-11-25
+
+### Removed
+
+- The experimental web interface (the `server/` backend and `web/` frontend, its Dockerfile, and its tests) is removed from the distributed package. This release covers the command-line pipeline only; the web interface continues in private development.
+
 ## [1.3.1] - 2026-11-24
 
 ### Changed
