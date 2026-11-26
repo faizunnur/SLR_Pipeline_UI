@@ -22,7 +22,7 @@ function reviewWorkspace(host, opts) {
     return String(r.title).toLowerCase().includes(q) || String(r.abstract || "").toLowerCase().includes(q) || String(r.id) === q;
   });
   const current = () => rows.find((r) => r.id === st.sel);
-  const reasonInput = h("input", { type: "text", placeholder: "Reason (optional for include)", "aria-label": "Reason for the decision" });
+  const reasonInput = h("input", { type: "text", placeholder: "Reason", "aria-label": "Reason for the decision" });
   const wrap = h("div.screen");
   host.append(wrap);
 
@@ -100,8 +100,8 @@ function reviewWorkspace(host, opts) {
         h("div.rec-actions", reasonInput,
           opts.options.map(([dec, label, cls, key]) => h("button.btn." + cls + (d === dec ? ".on" : ""), { onclick: () => decide(dec) }, label, h("kbd", key))),
           h("span.grow"),
-          h("button.btn.ghost.sm", { onclick: () => move(-1), title: "Previous (K)" }, "↑"),
-          h("button.btn.ghost.sm", { onclick: () => move(1), title: "Next (J)" }, "↓")));
+          h("button.btn.ghost.sm", { onclick: () => move(-1), title: "Previous record" }, "Previous", h("kbd", "K")),
+          h("button.btn.ghost.sm", { onclick: () => move(1), title: "Next record" }, "Next", h("kbd", "J"))));
     }
     clear(wrap).append(left, right);
     const selEl = wrap.querySelector(".rec-item.sel");
@@ -169,7 +169,7 @@ async function assistPanel(el, run, p, as) {
     el.append(h("div.banner" + (as.last.problems.length ? ".warn" : ".good"), { style: "margin-bottom:14px" }, h("div",
       h("strong", "Last batch: " + as.last.n_applied + " decision(s) applied. "),
       Object.entries(c).map(([k, v]) => v + " " + k).join(", "),
-      as.last.problems.map((x) => h("div.small", "⚠ " + x)))));
+      as.last.problems.map((x) => h("div.small", x)))));
   }
   if (b.done) {
     const fin = await call("assist_finish", run.run_id, p.phase, as.skipped, as.totals);

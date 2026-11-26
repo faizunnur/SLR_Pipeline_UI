@@ -12,8 +12,8 @@ function renderSidebar() {
     { onclick: () => go(path), "aria-current": active ? "page" : null },
     dotClass !== undefined ? h("span.nav-dot" + (dotClass ? "." + dotClass : "")) : null, label,
     badge ? h("span.badge", badge) : null);
-  side.append(h("div.brand", h("div.brand-mark", "SLR"),
-    h("div", h("div.brand-name", "SLR Pipeline UI"), h("div.faint.small", "v" + (S.info ? S.info.version : "")))));
+  side.append(h("div.brand", h("div.brand-mark", { "aria-hidden": "true" }, h("i"), h("i"), h("i")),
+    h("div", h("div.brand-name", "SLR Pipeline"), h("div.brand-ver", "Version " + (S.info ? S.info.version : "")))));
   side.append(item("All reviews", "/", r.name === "home" || r.name === "new"));
   if (r.name === "run" && S.run) {
     const run = S.run, target = run.progress.target || {};
@@ -144,7 +144,7 @@ S.views.new = async (el) => {
     h("p.muted", "Three short pages, then you can search. Only the topic and a contact email are required; everything else has a sensible default you can change."))));
   const steps = h("div.steps");
   WIZ_STEPS.forEach((name, i) => steps.append(h("button.step" + (i === wiz.step ? ".on" : i < wiz.step ? ".done" : ""),
-    { onclick: () => { wiz.step = i; render(); } }, h("b", i < wiz.step ? "✓" : String(i + 1)), name)));
+    { onclick: () => { wiz.step = i; render(); } }, h("b", i < wiz.step ? "✓" : String(i + 1) + "."), name)));
   el.append(steps);
   const card = h("div.card.stack");
   el.append(card);

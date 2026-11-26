@@ -36,6 +36,12 @@ entries below 1.0.0 are the upstream project's history, kept for reference.
 - **Browser mode** (`slr-ui --browser`) for systems with no native web view.
   It binds to 127.0.0.1, requires a per-session token, and checks the Host
   header.
+- **A design system built for the subject.** An ink-navy navigation rail and a
+  white work area; hue is reserved for include / exclude / maybe, each with its
+  own shape as well as colour; the overview draws the PRISMA flow as boxes and
+  arrows with `n =` counts; record titles and abstracts are set in a reading
+  serif; tables use journal-style rules. Light and dark themes share the tokens
+  documented at the top of `src/slr_desktop/web/app.css`.
 - **Easy start.** `pip install slr-pipeline-ui` is the whole installation. The
   app offers a desktop shortcut on first run (also `slr-ui --shortcut`), the
   new-review form asks only for a topic and a contact email before you can

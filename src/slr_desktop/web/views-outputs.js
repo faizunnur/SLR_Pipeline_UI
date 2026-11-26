@@ -38,7 +38,7 @@ S.views["run:outputs"] = async (el) => {
       if (!chk) return;
       if (chk.warnings.length) {
         const ok = await new Promise((resolve) => modal({ title: "The PRISMA numbers do not balance",
-          body: h("div.stack.tight", chk.warnings.map((w) => h("p", "⚠ " + w)), h("p.muted", "Generate the figure anyway?")),
+          body: h("div.stack.tight", chk.warnings.map((w) => h("p", w)), h("p.muted", "Generate the figure anyway?")),
           actions: [{ label: "Not now", onclick: () => resolve(false) }, { label: "Generate anyway", primary: true, onclick: () => resolve(true) }] }));
         if (!ok) { await tryCall("figures_skip", id, chk.warnings); return; }
       }

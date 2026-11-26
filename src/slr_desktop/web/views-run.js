@@ -32,10 +32,10 @@ S.views["run:overview"] = async (el) => {
   el.append(runHead(c.topic, "Created " + fmt.date(run.created) + (c.reviewer ? " · Reviewer " + c.reviewer : ""),
     h("button.btn", { onclick: () => openPath(run.run_dir) }, "Open folder")));
 
-  el.append(h("div.banner", { style: "margin-bottom:16px" },
-    h("div.grow", h("div.small.muted", "Next step"), h("strong", run.progress.label)),
-    h("span.num.muted", run.progress.percent + "%"),
-    h("button.btn.primary", { onclick: () => go(runPath(run.run_id, t.tab, t.phase ? String(t.phase) : "")) }, "Continue")));
+  el.append(h("div.nextstep",
+    h("div.grow", h("div.label", "Next step"), h("strong", run.progress.label)),
+    h("span.pct", run.progress.percent + "% done"),
+    h("button.btn", { onclick: () => go(runPath(run.run_id, t.tab, t.phase ? String(t.phase) : "")) }, "Continue")));
 
   if (run.missing_keys.length) {
     el.append(h("div.banner.warn", { style: "margin-bottom:16px" }, h("div.grow", h("strong", "No API key for: " + run.missing_keys.join(", ") + ". "),
@@ -48,7 +48,7 @@ S.views["run:overview"] = async (el) => {
     const now = (tab) => t.tab === tab && t.phase === p.phase;
     const step = (label, value, done, tab, sub) => h("button.pstep" + (done ? ".done" : "") + (now(tab) ? ".now" : "") + (p.unlocked ? "" : ".locked"),
       { disabled: !p.unlocked, onclick: () => go(runPath(run.run_id, tab, String(p.phase))) },
-      h("div.t", done ? "✓ " : "", label), h("div.v", value), sub ? h("div.small.muted", sub) : null);
+      h("div.t", label, done ? " ✓" : ""), h("div.v", value), sub ? h("div.small.muted", sub) : null);
     pipe.append(h("div.phase-line", h("div.phase-name", "Phase " + p.phase),
       step("Search", p.searched ? fmt.n(cnt("search", "n_hits")) + " hits" : "Not run", p.searched, "search",
         p.searched ? fmt.n(cnt("dedup", "n_dupes")) + " duplicates removed" : null),
@@ -62,18 +62,19 @@ S.views["run:overview"] = async (el) => {
   el.append(h("div.card", { style: "margin-bottom:16px" }, h("div.card-head", h("h2", "Search phases")), pipe));
 
   const pr = run.prisma;
-  const box = (label, n, cls) => h("div.pbox" + (cls ? "." + cls : ""), h("span", label), h("b", fmt.n(n)));
+  const fbox = (label, n, cls) => h("div.fbox" + (cls ? "." + cls : ""), h("span", label), h("b", "n = " + fmt.n(n)));
+  const flowRow = (label, n, outLabel, outN) => [fbox(label, n), h("i.fright"), fbox(outLabel, outN, "out"), h("i.fdown")];
+  const undecided = pr.undecided_ta + pr.undecided_ft;
   el.append(h("div.card", { style: "margin-bottom:16px" },
     h("div.card-head", h("h2.grow", "PRISMA flow so far"),
       h("button.btn.sm", { onclick: () => go(runPath(run.run_id, "outputs")) }, "Figures and reports")),
-    h("div.prisma",
-      box("Records identified", pr.identified), box("Duplicates removed", pr.duplicates_removed, "side"),
-      box("Records screened", pr.screened), box("Excluded at title/abstract", pr.excluded_ta, "side"),
-      box("Assessed at full text", pr.assessed_ft), box("Excluded at full text", pr.excluded_ft, "side"),
-      box("Studies included", pr.included, "final"),
-      pr.undecided_ta || pr.undecided_ft ? box("Still undecided", pr.undecided_ta + pr.undecided_ft, "side") : h("div")),
-    run.prisma_warnings.length ? h("div.stack.tight", { style: "margin-top:12px" },
-      run.prisma_warnings.map((w) => h("div.small", { style: "color:var(--may)" }, "⚠ " + w))) : null));
+    h("div.prisma", { role: "img", "aria-label": "PRISMA flow: " + pr.identified + " identified, " + pr.screened + " screened, " + pr.assessed_ft + " assessed at full text, " + pr.included + " included" },
+      flowRow("Records identified", pr.identified, "Duplicates removed", pr.duplicates_removed),
+      flowRow("Records screened", pr.screened, "Excluded at title and abstract", pr.excluded_ta),
+      flowRow("Assessed at full text", pr.assessed_ft, "Excluded at full text", pr.excluded_ft),
+      fbox("Studies included", pr.included, "end")),
+    undecided ? h("div.fnote", undecided + " record(s) still have no decision, so the boxes will not add up until they are screened.") : null,
+    run.prisma_warnings.filter((w) => !/no title\/abstract decision yet/.test(w)).map((w) => h("div.fnote", w))));
 
   const dl = h("dl.kv");
   const row = (k, v) => dl.append(h("dt", k), h("dd", v || "–"));
