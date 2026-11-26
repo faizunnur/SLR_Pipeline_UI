@@ -382,3 +382,48 @@ class TestNothingIsSilentlyLost:
         assert status["status"] == "done" and status["result"]["n_kept"] == 1
         row = next(r for r in svc.get_extraction(searched)["rows"] if r["id"] == rid)
         assert row["key_findings"] == "F1 of 0.97 on CIC-IDS2017" and row["venue_tier"] == "T1"
+
+
+class TestEasyStart:
+    """The things that remove set-up work for a first-time user."""
+
+    def test_example_review_needs_no_setup_and_no_network(self, svc):
+        job, run_id = svc.start_example()
+        status = wait(svc, job)
+        assert status["status"] == "done", "\n".join(status["lines"])
+        phase = svc.get_run(run_id)["phases"][0]
+        assert phase["searched"] and phase["n_rows"] > 10 and phase["n_undecided"] == phase["n_rows"]
+        names = [e["event"] for e in events(svc, run_id)]
+        # bundled records must not be passed off as a search this review ran
+        assert "example_data_loaded" in names and "search_run" not in names
+        assert svc.get_screening(run_id, 1)["criteria"]["inclusion"]
+
+    def test_example_review_cannot_contact_services_without_an_email(self, svc):
+        job, run_id = svc.start_example()
+        wait(svc, job)
+        for call in (lambda: svc.start_download(run_id), lambda: svc.start_snowball(run_id),
+                     lambda: svc.start_search(run_id, 1, True)):
+            with pytest.raises(ServiceError, match="contact email"):
+                call()
+        svc.update_search_settings(run_id, {"mailto": "reviewer@university.example"})
+        assert svc.get_run(run_id)["config"]["mailto"] == "reviewer@university.example"
+
+    def test_shortcut_points_at_something_that_exists(self):
+        from slr_desktop import shortcut
+        cmd = shortcut.launch_command()
+        assert Path(cmd[0]).exists()
+        assert cmd[0].lower().endswith(("slr-desktop", "slr-desktop.exe")) or cmd[1:] == ["-m", "slr_desktop"]
+
+    def test_shortcut_is_created_in_the_given_folder(self, tmp_path):
+        from slr_desktop import shortcut
+        paths = shortcut.create([tmp_path])
+        assert len(paths) == 1 and paths[0].exists() and paths[0].parent == tmp_path
+        assert paths[0].stat().st_size > 0
+
+    def test_linux_launcher_is_a_valid_desktop_entry(self, tmp_path, monkeypatch):
+        from slr_desktop import shortcut
+        monkeypatch.setattr(shortcut.sys, "platform", "linux")
+        path = shortcut.create([tmp_path / "apps"])[0]
+        body = path.read_text(encoding="utf-8")
+        assert body.startswith("[Desktop Entry]") and "Terminal=false" in body
+        assert "Exec=" in body and "slr" in body

@@ -14,6 +14,7 @@ one can be continued in the other.
 slr-ui                          # the window
 slr-ui --workspace D:\Reviews   # use (and remember) another workspace folder
 slr-ui --browser                # no native web view: show it in your browser
+slr-ui --shortcut               # add a desktop shortcut (and Start-menu entry), then exit
 slr-ui --debug                  # open the web inspector with the window
 ```
 
@@ -36,11 +37,18 @@ reproducibility appendix without leaking a credential.
 
 ### All reviews
 
-One card per review with its topic, the next step and a progress bar.
-**New review** opens a seven-step form: question (topic and search concepts),
-eligibility criteria, reporting items (registration, grey literature,
-reporting-bias plan, funding), appraisal instrument, search settings, people,
-and a confirmation page. Keywords and criteria are part of the protocol and are
+One card per review with its topic, the next step and a progress bar. With no
+reviews yet, the page explains the five steps of a review and offers **Try the
+example review**: a practice review made from 21 bundled records, with no
+network use. Its provenance says the records were loaded as example data, not
+retrieved by a search, and stages that contact outside services stay blocked
+until you add a contact email.
+
+**New review** opens a five-page form: question (topic and search concepts),
+criteria, search (years, contact email, sources), optional details (reviewer,
+AI tool, appraisal instrument, registration, grey literature, reporting-bias
+plan, funding), and a confirmation page. Only the topic and the email are
+required; the optional page can be skipped and its defaults are recorded. Keywords and criteria are part of the protocol and are
 fixed once the review is created. The contact email, years, sources, the
 per-source cap, the reviewer name and the AI tool name can be edited later
 (*Overview > Edit search settings*).

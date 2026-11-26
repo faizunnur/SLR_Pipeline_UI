@@ -82,12 +82,21 @@ inclusion/exclusion criteria for your own topic; the method does not change.
 
 ## Installing
 
-Python 3.10 or newer is required.
+You need Python 3.10 or newer ([python.org](https://www.python.org/downloads/);
+on Windows tick "Add python.exe to PATH" in the installer). Then, in a terminal:
 
 ```bash
 pip install slr-pipeline-ui
 slr-ui
 ```
+
+That is the whole installation. You do not need this GitHub repository, git, or
+any other download. The first time the app opens it offers to **add a desktop
+shortcut**; after that you start it with a double-click and never need the
+terminal again (`slr-ui --shortcut` does the same from the command line).
+
+Not sure yet? On the first screen choose **Try the example review**: 21 bundled
+records, no account, no API key, nothing sent anywhere.
 
 `pipx install slr-pipeline-ui` works the same way and keeps the app in its own
 environment. To run the latest code from GitHub instead:
@@ -126,9 +135,10 @@ For a review you intend to publish, install the pinned versions in
 
 ## First review in five steps
 
-1. `slr-ui`, then **New review**. Enter the topic, one row of synonyms per
-   concept, your inclusion and exclusion criteria, the year range and a real
-   contact email. The search string is shown as you type.
+1. **New review**: three short pages. Only the topic and a contact email are
+   required; add one row of synonyms per idea in your question and your
+   inclusion and exclusion criteria. The search string is shown as you type.
+   A fourth page of reporting details is optional and can be skipped.
 2. **Search**: press *Run search*. The log at the bottom shows each source;
    the per-source record (retrieved, available, truncated) is kept for your
    methods section.
@@ -412,6 +422,6 @@ Licensing is split by content type, as in the original project:
   [`LICENSE-docs`](LICENSE-docs). It is adapted from slr-pipeline's
   documentation; the changes are stated in that file.
 
-Copyright (c) 2026 faizunnur (SLR Pipeline UI: the desktop app and the changes
+Copyright (c) 2026 Md Faizun Nur Islam (SLR Pipeline UI: the desktop app and the changes
 made in this repository).
 Copyright (c) 2026 Md Nayeem Hossain (the original slr-pipeline).

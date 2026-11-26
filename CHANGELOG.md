@@ -36,6 +36,14 @@ entries below 1.0.0 are the upstream project's history, kept for reference.
 - **Browser mode** (`slr-ui --browser`) for systems with no native web view.
   It binds to 127.0.0.1, requires a per-session token, and checks the Host
   header.
+- **Easy start.** `pip install slr-pipeline-ui` is the whole installation. The
+  app offers a desktop shortcut on first run (also `slr-ui --shortcut`), the
+  new-review form asks only for a topic and a contact email before you can
+  search, and **Try the example review** opens a practice review from 21
+  bundled records without touching the network.
+- **Publishing workflow** (`.github/workflows/publish.yml`): a GitHub release
+  uploads the package to PyPI through trusted publishing.
+- Stages that contact outside services refuse to start without a contact email.
 - **Workspace folder** (default `Documents/SLR Pipeline`) holding `runs/` and
   `.env`, chosen in the app; light and dark themes.
 - `NOTICE`, listing what comes from slr-pipeline and what is new.

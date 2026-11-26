@@ -4,7 +4,8 @@ type: software
 title: "slr-pipeline-ui"
 abstract: "A desktop app for running a systematic literature review end to end: search, dedup, screening, full-text assessment, extraction, PRISMA 2020 figures, citation verification and a full provenance record. A redesigned UI built on slr-pipeline."
 authors:
-  - name: "faizunnur"
+  - family-names: "Islam"
+    given-names: "Md Faizun Nur"
 version: "1.0.0"
 date-released: "2026-11-27"
 license: "MIT"

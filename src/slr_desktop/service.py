@@ -332,6 +332,58 @@ class ReviewService:
                      based_on=f"slr-pipeline {UPSTREAM_VERSION}")
         return {"run_id": run_id, "query": cfg.search_query()}
 
+    def start_example(self):
+        """A ready-made practice review: 21 real records about ML-based intrusion
+        detection, bundled with the app, so every screen can be tried without
+        setting anything up or touching the network. The search stage is marked
+        done with these records; de-duplication and the screening sheet are then
+        built by the real stage scripts."""
+        sample = Path(__file__).resolve().parent / "sample" / "candidates.csv"
+        if not sample.is_file():
+            raise ServiceError("The example data is missing from this installation.")
+        self._guard_idle()
+        cfg = ReviewConfig(
+            topic="Example review: machine-learning intrusion detection (sample data)",
+            keyword_blocks=[["intrusion detection", "IDS"], ["machine learning", "deep learning"]],
+            year_from=2015, year_to=date.today().year, sources=["openalex"], max_per_source=30,
+            inclusion_criteria="proposes or evaluates a machine-learning intrusion detection "
+                               "approach; reports an empirical evaluation",
+            exclusion_criteria="not about intrusion detection; no empirical evaluation",
+            research_field="software_engineering",
+            primary_study_instruments=list(FIELD_PROFILES["software_engineering"].primary_study_instruments),
+            review_level_instrument=FIELD_PROFILES["software_engineering"].review_level_instrument,
+            grey_literature_justification="Example data only.",
+            reporting_bias_assessment="Example data only.",
+        )
+        run_id = tui._unique_run_id(self.runs_dir, "example-review")
+        state = RunState.create(self.runs_dir, run_id, cfg.to_dict())
+        prov = Provenance(state.run_dir / "provenance.jsonl")
+        prov.log("review_created", run_id=run_id, topic=cfg.topic, keywords=cfg.display_keywords())
+        self._opened.add(run_id)
+        pdir = state.phase_dir(1)
+        shutil.copy2(sample, pdir / "candidates.csv")
+        n_hits = len(tui._read_csv_safe(pdir / "candidates.csv"))
+        state.state["phase_1_query"] = cfg.search_query()
+        state.mark_stage(1, "search", counts={"n_hits": n_hits})
+        # Not a "search_run" event: these records were not retrieved by this review.
+        prov.log("example_data_loaded", phase=1, n_hits=n_hits,
+                 note="bundled sample records; no search was run")
+
+        def task(ctx: JobContext):
+            st, c, pv = self._load(run_id)
+            ctx.log(f"Loaded {n_hits} bundled sample records (no search was run).")
+            self._run_search_dedup_prescreen(ctx, st, c, pv, 1, st.phase_dir(1), c.search_query())
+            return {"run_id": run_id}
+
+        job = self.jobs.start("Preparing the example review", task, run_id)
+        return job, run_id
+
+    @staticmethod
+    def _need_email(cfg) -> None:
+        if "@" not in (cfg.mailto or ""):
+            raise ServiceError("This step contacts scholarly services that ask for a contact "
+                               "email. Add yours under Overview > Edit search settings first.")
+
     def preview_query(self, blocks: list) -> str:
         cfg = ReviewConfig(keyword_blocks=[[t for t in b if t and t.strip()] for b in blocks or []])
         return cfg.search_query()
@@ -469,6 +521,8 @@ class ReviewService:
         if phase > 1 and state.state.get("current_phase", 1) < phase:
             raise ServiceError(f"Phase {phase} opens after phase {phase - 1}'s review gate "
                                f"and query expansion are done.")
+        if rerun or not state.is_stage_done(phase, "search"):
+            self._need_email(cfg)
 
         def task(ctx: JobContext):
             st, c, pv = self._load(run_id)
@@ -966,6 +1020,8 @@ class ReviewService:
 
     # --- consolidation: background stage scripts ---------------------------
     def start_download(self, run_id: str):
+        self._need_email(self._load(run_id)[1])
+
         def task(ctx):
             state, cfg, prov = self._load(run_id)
             self._merged(state, cfg)
@@ -1105,6 +1161,7 @@ class ReviewService:
     def start_snowball(self, run_id: str, direction: str = "both", max_per_seed: int = 50):
         if direction not in ("both", "backward", "forward"):
             raise ServiceError("Direction must be both, backward or forward.")
+        self._need_email(self._load(run_id)[1])
 
         def task(ctx):
             state, cfg, prov = self._load(run_id)

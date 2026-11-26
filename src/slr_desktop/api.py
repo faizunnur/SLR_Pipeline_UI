@@ -54,8 +54,35 @@ class Api:
     @_safe
     def app_info(self):
         info = self._svc.app_info()
-        info["theme"] = settings.load().get("theme", "system")
+        stored = settings.load()
+        info["theme"] = stored.get("theme", "system")
+        info["shortcut_done"] = bool(stored.get("shortcut_done"))
+        info["shortcut_dismissed"] = bool(stored.get("shortcut_dismissed"))
         return info
+
+    @_safe
+    def create_shortcut(self):
+        from slr_desktop import shortcut
+        try:
+            paths = shortcut.create()
+        except (OSError, subprocess.SubprocessError) as e:
+            raise ServiceError(f"Could not create the shortcut: {e}")
+        data = settings.load()
+        data["shortcut_done"] = True
+        settings.save(data)
+        return [str(p) for p in paths]
+
+    @_safe
+    def dismiss_shortcut_tip(self):
+        data = settings.load()
+        data["shortcut_dismissed"] = True
+        settings.save(data)
+        return True
+
+    @_safe
+    def start_example(self):
+        job, run_id = self._svc.start_example()
+        return {"job_id": job.id, "title": job.title, "run_id": run_id}
 
     @_safe
     def set_theme(self, theme):

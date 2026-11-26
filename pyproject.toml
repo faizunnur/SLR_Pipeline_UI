@@ -8,7 +8,7 @@ requires-python = ">=3.10"
 # docs/ and examples/README.md are separately licensed under CC-BY-4.0; see
 # LICENSE-docs and the README's own "## License" section for the split.
 license = {file = "LICENSE.txt"}
-authors = [{name = "faizunnur"}]
+authors = [{name = "Md Faizun Nur Islam"}]
 keywords = ["systematic literature review", "PRISMA 2020", "screening", "citation verification", "research software", "desktop app"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -55,7 +55,7 @@ packages = ["srp", "scripts", "slr_desktop"]
 py-modules = ["slr"]
 
 [tool.setuptools.package-data]
-slr_desktop = ["web/*"]
+slr_desktop = ["web/*", "sample/*"]
 
 [build-system]
 requires = ["setuptools>=68"]

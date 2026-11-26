@@ -41,10 +41,27 @@ S.views.home = async (el) => {
     h("div.grow", h("h1", "Your reviews"),
       h("p.muted", "Each review is a folder you own: search results, every screening decision and its reason, and the audit trail.")),
     h("button.btn.primary", { onclick: () => go("/new") }, "New review")));
+  if (!S.info.shortcut_done && !S.info.shortcut_dismissed) {
+    el.append(h("div.banner", { style: "margin-bottom:16px" },
+      h("div.grow", h("strong", "Open this app with a double-click next time. "), "Add a shortcut to your desktop; you will not need the terminal again."),
+      h("button.btn.sm.primary", { onclick: addShortcut }, "Add desktop shortcut"),
+      h("button.btn.sm.ghost", { onclick: async () => { S.info.shortcut_dismissed = true; await tryCall("dismiss_shortcut_tip"); render(); } }, "Not now")));
+  }
   if (!runs.length) {
-    el.append(h("div.card.empty", h("h2", "No reviews yet"),
-      h("p", "Start one to set your question, eligibility criteria and sources. The search runs from there."),
-      h("p", { style: "margin-top:16px" }, h("button.btn.primary", { onclick: () => go("/new") }, "Start your first review"))));
+    const stepCard = (n, title, text) => h("div.card.how", h("b", String(n)), h("h3", title), h("p.muted.small", text));
+    el.append(h("div.card.stack", { style: "padding:26px" },
+      h("div", h("h2", "Welcome. A review takes five steps."),
+        h("p.muted", "The app keeps your place, so you can stop at any point and continue later.")),
+      h("div.how-grid",
+        stepCard(1, "Set your question", "Topic, search terms and what counts as eligible."),
+        stepCard(2, "Search", "One click queries the scholarly databases and removes duplicates."),
+        stepCard(3, "Screen", "Read titles and abstracts; press I, M or E. AI help is optional."),
+        stepCard(4, "Read full texts", "Record include or exclude, with a reason for each exclusion."),
+        stepCard(5, "Get your outputs", "PRISMA diagram, reference list, methods paragraph, audit trail.")),
+      h("div.row.wrap",
+        h("button.btn.primary", { onclick: () => go("/new") }, "Start your first review"),
+        h("button.btn", { disabled: jobRunning(), onclick: openExample }, "Try the example review first"),
+        h("span.small.muted", "The example uses 21 bundled records. Nothing is sent anywhere."))));
   } else {
     const grid = h("div.run-grid");
     for (const run of runs) {
@@ -61,8 +78,25 @@ S.views.home = async (el) => {
     h("a", { onclick: () => openPath(S.info.workspace) }, S.info.workspace)));
 };
 
+async function addShortcut() {
+  const paths = await tryCall("create_shortcut");
+  if (!paths) return;
+  S.info.shortcut_done = true;
+  toast(paths.length ? "Shortcut added: " + paths.map((x) => x.split(/[\\/]/).pop()).join(", ") : "Shortcut added.");
+  render();
+}
+async function openExample() {
+  if (jobRunning()) { toast("Another task is still running.", true); return; }
+  let started;
+  try { started = await call("start_example"); } catch (e) { toast(e.message, true); return; }
+  S.job = { id: started.job_id, title: started.title, status: "running", lines: [], next: 0, open: false,
+    onDone: (st) => { if (st.status === "done") go(runPath(started.run_id, "screening", "1")); } };
+  renderDock();
+  pollJob();
+}
+
 /* ---- new review ---- */
-const WIZ_STEPS = ["Question", "Eligibility", "Reporting", "Appraisal", "Search", "People", "Confirm"];
+const WIZ_STEPS = ["Question", "Criteria", "Search", "Optional details", "Confirm"];
 let wiz = null;
 function newWizardState(opts) {
   const d = opts.defaults;
@@ -107,7 +141,7 @@ S.views.new = async (el) => {
     onchange: (e) => { wiz[key] = e.target.checked; if (rerender) render(); } }), label);
 
   el.append(h("div.page-head", h("div.grow", h("h1", "New review"),
-    h("p.muted", "Fix the protocol before you see any results. Deciding what counts as eligible after seeing the hits is how reviews drift toward the answer their author expected."))));
+    h("p.muted", "Three short pages, then you can search. Only the topic and a contact email are required; everything else has a sensible default you can change."))));
   const steps = h("div.steps");
   WIZ_STEPS.forEach((name, i) => steps.append(h("button.step" + (i === wiz.step ? ".on" : i < wiz.step ? ".done" : ""),
     { onclick: () => { wiz.step = i; render(); } }, h("b", i < wiz.step ? "✓" : String(i + 1)), name)));
@@ -127,15 +161,16 @@ S.views.new = async (el) => {
       h("button.btn.ghost.sm", { title: "Remove this concept", "aria-label": "Remove concept " + (i + 1), disabled: wiz.blocks.length < 2,
         onclick: () => { wiz.blocks.splice(i, 1); render(); } }, "✕"))));
     card.append(
-      field("Review topic", text("topic", "e.g. Effects of pair programming on code quality"),
-        "Names the review folder, seeds the search and labels the AI screening prompt."),
+      field("Review topic (required)", text("topic", "e.g. Effects of pair programming on code quality"),
+        "A few words. It names the review and labels the AI screening prompt."),
       h("div.stack.tight", h("h3", "Search concepts"),
-        h("p.hint", "One row per concept (population, intervention, outcome…). Synonyms in a row are joined with OR; rows are joined with AND. Putting every synonym in one AND chain collapses recall."),
+        h("p.hint", "One row per idea in your question. In a row, type words that mean the same thing, separated by commas: a paper needs only one of them. A paper must match every row."),
         blocks, h("div", h("button.btn.sm", { onclick: () => { wiz.blocks.push([""]); render(); } }, "Add a concept"))),
       h("div.stack.tight", h("h3", "Search string"), preview));
     refresh();
   } else if (wiz.step === 1) {
     card.append(
+      h("p.hint", "Decide what counts as eligible now, before you see any results. Deciding afterwards is how a review drifts toward the answer its author expected."),
       field("Inclusion criteria", area("inclusion_criteria", "peer-reviewed or conference paper; empirically compares …; reports a … metric", 4),
         "A study must meet all of these. Separate criteria with ; or new lines."),
       field("Exclusion criteria", area("exclusion_criteria", "not in English; no empirical evaluation; survey or review paper", 4),
@@ -143,8 +178,9 @@ S.views.new = async (el) => {
       !wiz.inclusion_criteria.trim() && !wiz.exclusion_criteria.trim()
         ? h("div.banner.warn", h("div", h("strong", "No criteria yet. "), "Without them, AI-assist screening can only ask “is this plausibly relevant?”, which is not a defensible criterion for a systematic review.")) : null,
       field("Language restriction (optional)", text("language_restriction", "e.g. English only"), "PRISMA item 5."));
-  } else if (wiz.step === 2) {
-    card.append(
+  }
+  const partReporting = () => {
+    card.append(h("h3", "Reporting details (PRISMA)"),
       field("Protocol registration ID (optional)", text("registration_id", "e.g. OSF: 10.17605/OSF.IO/XXXXX"),
         "PRISMA item 24a. Left blank, the review is recorded as not registered."),
       h("div.stack.tight", check("grey_literature_included", "This review includes grey literature (preprints, theses, technical reports)", true),
@@ -156,7 +192,9 @@ S.views.new = async (el) => {
           : h("p.hint", "A narrative synthesis is recorded, with the note that funnel plots need pooled effect sizes.")),
       h("div.grid2", field("Funding statement (optional)", text("funding_statement"), "PRISMA item 25."),
         field("Competing interests (optional)", text("competing_interests"), "PRISMA item 26.")));
-  } else if (wiz.step === 3) {
+  };
+  const partAppraisal = () => {
+    card.append(h("h3", "Quality appraisal"));
     const f = wiz.opts.fields.find((x) => x.key === wiz.research_field);
     const chosen = wiz.use_recommended ? f.primary.map((p) => p.key) : wiz.primary;
     card.append(
@@ -175,7 +213,8 @@ S.views.new = async (el) => {
           onchange: (e) => { wiz.mmat_designs = e.target.checked ? [...wiz.mmat_designs, d.key] : wiz.mmat_designs.filter((k) => k !== d.key); } }), d.name))) : null,
       f.certainty ? check("use_certainty", "Assess certainty of evidence using " + f.certainty.name) : null,
       f.justification ? h("p.hint", f.justification) : null);
-  } else if (wiz.step === 4) {
+  };
+  if (wiz.step === 2) {
     const src = h("div.row.wrap");
     for (const s of wiz.opts.sources) {
       const env = wiz.opts.keyed_sources[s], hasKey = !env || wiz.opts.keys_present[env];
@@ -186,20 +225,24 @@ S.views.new = async (el) => {
     }
     card.append(
       h("div.grid2", field("Year from", num("year_from", 1900, 2100)), field("Year to", num("year_to", 1900, 2100))),
-      field("Contact email", h("input", { type: "email", placeholder: "you@university.edu", ...bind("mailto") }),
-        "A real address. OpenAlex and Crossref use it for faster access; Unpaywall needs it to find open-access PDFs."),
+      field("Contact email (required)", h("input", { type: "email", placeholder: "you@university.edu", ...bind("mailto") }),
+        "Your real address. The scholarly databases ask for one so they can give faster access; it is sent only to them, with your searches."),
       h("div.stack.tight", h("h3", "Sources"), src,
         h("p.hint", "OpenAlex, Semantic Scholar, Crossref, arXiv, PubMed and DOAJ need no key. A keyed source without its key is skipped, never an error.")),
-      h("div.grid3",
+      h("details.more", h("summary", "Advanced settings (the defaults are fine)"), h("div.grid3", { style: "margin-top:12px" },
         field("Max results per source", num("max_per_source", 1), "Keep it small (40–60) while testing."),
         field("Search phases", num("n_phases", 1), "More than 1 adds query expansion between rounds."),
-        field("Title-dedup threshold", num("title_threshold", 0, 100), "0–100. 92 is a safe default.")));
-  } else if (wiz.step === 5) {
+        field("Title-dedup threshold", num("title_threshold", 0, 100), "0–100. 92 is a safe default."))));
+  } else if (wiz.step === 3) {
     card.append(
+      h("div.banner", h("div", h("strong", "You can skip this page. "), "Defaults are recorded for everything here, and each one is stated in your provenance report.")),
+      h("h3", "People and tools"),
       field("Reviewer name or initials (optional)", text("reviewer", "e.g. FN"), "Stamped on your decisions and the audit trail."),
       field("AI chatbot you will paste prompts into (optional)", text("assist_tool_name", "e.g. Claude, ChatGPT, Gemini"),
         "Any web chatbot works. Recorded only as your AI-assistance disclosure. Leave blank to screen fully by hand."));
-  } else {
+    partAppraisal();
+    partReporting();
+  } else if (wiz.step === 4) {
     const f = wiz.form = wizForm();
     const field_ = wiz.opts.fields.find((x) => x.key === f.research_field);
     const dl = h("dl.kv");
@@ -220,10 +263,12 @@ S.views.new = async (el) => {
     h("span.grow"),
     wiz.step ? h("button.btn", { onclick: () => { wiz.step--; render(); } }, "Back") : null,
     h("button.btn.primary", { onclick: async () => {
+      if (wiz.step === 0 && !wiz.topic.trim()) { toast("Type a topic for your review first.", true); el.querySelector("input").focus(); return; }
+      if (wiz.step === 2 && !wiz.mailto.includes("@")) { toast("Enter your contact email first.", true); el.querySelector("input[type=email]").focus(); return; }
       if (!last) { wiz.step++; render(); return; }
       const out = await tryCall("create_run", wiz.form);
       if (out) { wiz = null; toast("Review created."); go(runPath(out.run_id)); }
-    } }, last ? "Create review" : "Next")));
+    } }, last ? "Create review" : wiz.step === 3 ? "Next (or skip)" : "Next")));
 };
 
 /* ---- API keys ---- */
@@ -255,6 +300,10 @@ S.views.about = async (el) => {
       h("div.row.wrap", h("span.mono", info.workspace),
         h("button.btn.sm", { onclick: () => openPath(info.workspace) }, "Open folder"),
         h("button.btn.sm", { onclick: async () => { const out = await tryCall("choose_workspace"); if (out) { S.info = { ...S.info, ...out }; toast("Workspace changed."); go("/"); } } }, "Change…"))),
+    h("div.card.stack", h("h2", "Desktop shortcut"),
+      h("p.muted", "Adds “SLR Pipeline UI” to your desktop" + (navigator.platform.startsWith("Win") ? " and Start menu" : "") + ", so the app opens with a double-click."),
+      h("div.row", h("button.btn.sm", { onclick: addShortcut }, info.shortcut_done ? "Create it again" : "Add desktop shortcut"),
+        info.shortcut_done ? h("span.badge.inc", "Added") : null)),
     h("div.card.stack", h("h2", "Appearance"),
       seg([["system", "Match system"], ["light", "Light"], ["dark", "Dark"]], info.theme || "system", async (t) => {
         S.info.theme = t; applyTheme(t); await tryCall("set_theme", t); render(); })),

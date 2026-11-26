@@ -13,6 +13,7 @@ systems with no web view installed (see server.py).
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +31,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     ap.add_argument("--browser", action="store_true",
                     help="Show the app in your default browser instead of a native window "
                          "(for systems with no web view installed). Local only: 127.0.0.1.")
+    ap.add_argument("--shortcut", action="store_true",
+                    help="Create a desktop shortcut (and a Start-menu entry on Windows), then exit.")
     ap.add_argument("--debug", action="store_true", help="Open the web inspector.")
     return ap
 
@@ -66,6 +69,18 @@ def run_in_browser(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
+    if args.shortcut:
+        from slr_desktop import settings, shortcut
+        try:
+            paths = shortcut.create()
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"Could not create the shortcut: {e}", file=sys.stderr)
+            return 1
+        data = settings.load()
+        data["shortcut_done"] = True
+        settings.save(data)
+        print("Shortcut created:\n  " + "\n  ".join(str(p) for p in paths))
+        return 0
     if args.browser:
         return run_in_browser(args)
     try:

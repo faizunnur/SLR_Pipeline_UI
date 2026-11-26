@@ -241,3 +241,10 @@ td select { padding: 3px 6px; width: auto; min-width: 54px; }
 @media (max-width: 1180px) { .ext { grid-template-columns: 1fr; } }
 
 .stack > .seg { align-self: flex-start; }
+
+/* first-run guidance and optional sections */
+.how-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.card.how { padding: 14px; display: flex; flex-direction: column; gap: 4px; background: var(--surface-2); border-color: transparent; }
+.card.how b { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-text); display: grid; place-items: center; font-size: 12px; margin-bottom: 4px; }
+details.more summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+@media (max-width: 1180px) { .how-grid { grid-template-columns: repeat(2, 1fr); } }
