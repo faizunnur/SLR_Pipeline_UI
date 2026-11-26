@@ -418,7 +418,17 @@ class TestEasyStart:
         from slr_desktop import shortcut
         paths = shortcut.create([tmp_path])
         assert len(paths) == 1 and paths[0].exists() and paths[0].parent == tmp_path
-        assert paths[0].stat().st_size > 0
+
+    def test_mac_launcher_is_an_app_bundle(self, tmp_path, monkeypatch):
+        import plistlib
+        from slr_desktop import shortcut
+        monkeypatch.setattr(shortcut.sys, "platform", "darwin")
+        app = shortcut.create([tmp_path])[0]
+        assert app.name == "SLR Pipeline UI.app"
+        info = plistlib.loads((app / "Contents" / "Info.plist").read_bytes())
+        launcher = app / "Contents" / "MacOS" / info["CFBundleExecutable"]
+        assert info["CFBundlePackageType"] == "APPL"
+        assert launcher.read_text(encoding="utf-8").startswith("#!/bin/sh\nexec ")
 
     def test_linux_launcher_is_a_valid_desktop_entry(self, tmp_path, monkeypatch):
         from slr_desktop import shortcut

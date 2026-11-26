@@ -98,8 +98,29 @@ terminal again (`slr-ui --shortcut` does the same from the command line).
 Not sure yet? On the first screen choose **Try the example review**: 21 bundled
 records, no account, no API key, nothing sent anywhere.
 
-`pipx install slr-pipeline-ui` works the same way and keeps the app in its own
-environment. To run the latest code from GitHub instead:
+**Recommended if you use Python for other things: `pipx`.** It gives the app
+its own private environment, so it cannot clash with packages (or Python
+versions) your other work needs, and nothing you install later can break it.
+
+```bash
+# Windows
+python -m pip install --user pipx
+python -m pipx ensurepath        # then close and reopen the terminal
+pipx install slr-pipeline-ui
+
+# macOS (with Homebrew)
+brew install pipx
+pipx ensurepath                  # then close and reopen the terminal
+pipx install slr-pipeline-ui
+```
+
+On macOS the Python that comes with the system is too old; install a current
+one from [python.org](https://www.python.org/downloads/macos/) or with
+`brew install python`, and type `pip3` where this page says `pip`. The desktop
+shortcut on a Mac is an app in your Applications folder and on the Desktop.
+
+Several Python versions on one computer are fine: the app lives in the one it
+was installed with and always runs with that one, including its shortcut. To run the latest code from GitHub instead:
 `pip install git+https://github.com/faizunnur/SLR_Pipeline_UI.git`.
 
 Three commands are installed:

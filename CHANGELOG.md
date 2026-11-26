@@ -6,6 +6,15 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Changed
+
+- On macOS the desktop shortcut is now an app bundle in `~/Applications` and on
+  the Desktop (opens with a double-click, no Terminal window) instead of a
+  `.command` file.
+- The test suite now runs on Windows, macOS and Linux, on Python 3.10 and 3.13,
+  and installs the package and starts its commands on each.
+- README: `pipx` is the recommended install, with macOS instructions.
+
 ## [1.0.1] - 2026-11-27
 
 ### Changed

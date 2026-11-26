@@ -1,10 +1,9 @@
 name: tests
 
-# Runs the pytest suite on every push/PR. This is here mainly so a green badge
-# demonstrates the tests pass on a clean machine, not your own -- for a solo
-# project run locally, `python -m pytest tests/` gives you the same signal
-# faster. No lint/type-check/coverage gates: this project's dependency list and
-# test suite are the reproducibility surface that matters; a linter is not.
+# Runs the pytest suite on every push/PR, on the three systems researchers use
+# and on the oldest and a recent supported Python, so "works on my machine" is
+# checked on machines that are not mine. The last steps install the package the
+# way a user does and start its commands.
 on:
   push:
     branches: [main]
@@ -12,11 +11,25 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - run: pip install -r requirements.lock pytest
-      - run: python -m pytest tests/ -v
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest tests/ -q
+      - name: Install like a user and start the commands
+        run: |
+          pip install .
+          slr-ui --help
+          slr --help
+          python -c "import slr_desktop.app, srp; print(srp.__version__)"
+      - name: The desktop window library loads (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: python -c "import webview; print('pywebview ok')"

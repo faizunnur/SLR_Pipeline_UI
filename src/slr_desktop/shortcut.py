@@ -68,14 +68,38 @@ def _quote(part: str) -> str:
     return '"' + part.replace('"', '\\"') + '"'
 
 
+_PLIST = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>{name}</string>
+  <key>CFBundleDisplayName</key><string>{name}</string>
+  <key>CFBundleIdentifier</key><string>io.github.faizunnur.slr-pipeline-ui</string>
+  <key>CFBundleExecutable</key><string>launcher</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1</string>
+  <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
+"""
+
+
 def _mac(folders: list[Path] | None) -> list[Path]:
+    """A small .app bundle: it shows in Launchpad/Spotlight and opens with a
+    double-click, with no Terminal window. It only starts the installed app."""
+    if folders is None:
+        folders = [Path.home() / "Applications", Path.home() / "Desktop"]
     out = []
-    for folder in folders or [Path.home() / "Desktop"]:
-        path = folder / f"{NAME}.command"
-        path.write_text("#!/bin/sh\nexec " + " ".join(_quote(p) for p in launch_command()) + "\n",
-                        encoding="utf-8")
-        path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        out.append(path)
+    for folder in folders:
+        app = folder / f"{NAME}.app"
+        macos = app / "Contents" / "MacOS"
+        macos.mkdir(parents=True, exist_ok=True)
+        (app / "Contents" / "Info.plist").write_text(_PLIST.format(name=NAME), encoding="utf-8")
+        launcher = macos / "launcher"
+        launcher.write_text("#!/bin/sh\nexec " + " ".join(_quote(p) for p in launch_command()) + "\n",
+                            encoding="utf-8")
+        launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        out.append(app)
     return out
 
 
