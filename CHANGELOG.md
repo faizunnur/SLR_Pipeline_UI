@@ -6,6 +6,26 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-27
+
+### Changed
+
+- **Redesigned interface.** An ink-navy navigation rail and a
+  white work area; hue is reserved for include / exclude / maybe, each with its
+  own shape as well as colour; the overview draws the PRISMA flow as boxes and
+  arrows with `n =` counts; record titles and abstracts are set in a reading
+  serif; tables use journal-style rules. Light and dark themes share the tokens
+  documented at the top of `src/slr_desktop/web/app.css`.
+
+### Added
+
+- **Automatic releases** (`.github/workflows/publish.yml`): a push to `main`
+  whose `pyproject.toml` version has no tag yet is tested, uploaded to PyPI
+  through trusted publishing, and published as a GitHub release with that
+  version's changelog section as its notes. Other pushes release nothing.
+- `tools/release.py`: one command bumps the version, rolls this changelog,
+  commits and pushes.
+
 ## [1.0.0] - 2026-11-27
 
 First release of **slr-pipeline-ui**: a desktop app built on
@@ -36,19 +56,11 @@ entries below 1.0.0 are the upstream project's history, kept for reference.
 - **Browser mode** (`slr-ui --browser`) for systems with no native web view.
   It binds to 127.0.0.1, requires a per-session token, and checks the Host
   header.
-- **A design system built for the subject.** An ink-navy navigation rail and a
-  white work area; hue is reserved for include / exclude / maybe, each with its
-  own shape as well as colour; the overview draws the PRISMA flow as boxes and
-  arrows with `n =` counts; record titles and abstracts are set in a reading
-  serif; tables use journal-style rules. Light and dark themes share the tokens
-  documented at the top of `src/slr_desktop/web/app.css`.
 - **Easy start.** `pip install slr-pipeline-ui` is the whole installation. The
   app offers a desktop shortcut on first run (also `slr-ui --shortcut`), the
   new-review form asks only for a topic and a contact email before you can
   search, and **Try the example review** opens a practice review from 21
   bundled records without touching the network.
-- **Publishing workflow** (`.github/workflows/publish.yml`): a GitHub release
-  uploads the package to PyPI through trusted publishing.
 - Stages that contact outside services refuse to start without a contact email.
 - **Workspace folder** (default `Documents/SLR Pipeline`) holding `runs/` and
   `.env`, chosen in the app; light and dark themes.

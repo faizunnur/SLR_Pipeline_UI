@@ -1,19 +1,54 @@
 name: publish
 
-# Uploads the package to PyPI when a GitHub release is published, so that
-# `pip install slr-pipeline-ui` gives researchers that release.
+# Releases automatically, but only when there is something new to release.
+#
+# On every push to main this reads the version in pyproject.toml. If no git tag
+# `v<version>` exists yet, it runs the tests, builds the package, uploads it to
+# PyPI and then creates the GitHub release with that version's CHANGELOG
+# section as its notes. If the tag already exists, it stops: an ordinary push
+# never reaches researchers.
+#
+# So a release is: raise `version` in pyproject.toml (and CITATION.cff), add a
+# CHANGELOG section, push to main.
 #
 # No password or token is stored here: PyPI's "trusted publishing" lets this
 # workflow prove who it is. One-time setup on pypi.org (Account > Publishing >
 # Add a pending publisher): project `slr-pipeline-ui`, owner `faizunnur`,
 # repository `SLR_Pipeline_UI`, workflow `publish.yml`, environment `pypi`.
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "v$version is already released: nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "v$version has no tag yet: releasing it." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,8 +64,8 @@ jobs:
           name: dist
           path: dist/
 
-  publish:
-    needs: build
+  pypi:
+    needs: [check, build]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -41,3 +76,32 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Last, so a tag only ever exists for a version that really is on PyPI. If
+  # the upload fails, the next push simply tries again.
+  github-release:
+    needs: [check, pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Release notes from the changelog
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || echo "Release $VERSION. See CHANGELOG.md." > notes.md
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: gh release create "v$VERSION" dist/* --title "v$VERSION" --notes-file notes.md --target "$GITHUB_SHA"

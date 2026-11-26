@@ -1,6 +1,6 @@
 [project]
 name = "slr-pipeline-ui"
-version = "1.0.0"
+version = "1.0.1"
 description = "Desktop app for running a systematic literature review end to end: search, dedup, screening, full-text assessment, extraction, PRISMA 2020 figures and an audit trail. A redesigned UI built on slr-pipeline."
 readme = "README.md"
 requires-python = ">=3.10"
