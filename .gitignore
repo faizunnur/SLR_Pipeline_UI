@@ -46,3 +46,6 @@ submit_form.json
 vue_instance_*.json
 scratch_*.py
 test_artifacts/
+
+# The desktop app's own page is source, not a test artifact (see `*.html` above).
+!src/slr_desktop/web/*.html

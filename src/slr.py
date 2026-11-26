@@ -70,11 +70,12 @@ from srp.quality_tier import compute_quality_tier
 from srp.state import RunState, record_key
 from srp.update_check import is_newer, latest_release_version
 from srp import __version__ as _VERSION
+from srp import UPSTREAM_VERSION as _UPSTREAM_VERSION
 from srp import llm_assist
 from srp import export as srp_export
 
-_RELEASES_URL = "https://github.com/nayeem-hossain/slr-pipeline/releases"
-_CHANGELOG_URL = "https://github.com/nayeem-hossain/slr-pipeline/blob/main/CHANGELOG.md"
+_RELEASES_URL = "https://github.com/faizunnur/SLR_Pipeline_UI/releases"
+_CHANGELOG_URL = "https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/CHANGELOG.md"
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = _SCRIPT_DIR / "scripts"
@@ -2570,7 +2571,7 @@ def _maybe_print_update_notice(console: Console) -> None:
     elif outcome == "outdated":
         console.print(
             f"[yellow]A newer version is available: {latest} (you're on {_VERSION}).[/] "
-            f"Run 'pipx upgrade --force slr-pipeline' to update, or see "
+            f"Run 'pipx upgrade --force slr-pipeline-ui' to update, or see "
             f"{_CHANGELOG_URL}"
         )
     else:
@@ -2598,7 +2599,7 @@ def _menu_check_for_updates(state: RunState, cfg: ReviewConfig, prov: Provenance
     elif outcome == "outdated":
         console.print(
             f"[yellow]A newer version is available: {latest} (you're on {_VERSION}).[/] "
-            f"Run 'pipx upgrade --force slr-pipeline' to update."
+            f"Run 'pipx upgrade --force slr-pipeline-ui' to update."
         )
     else:
         console.print(f"[green]Up to date[/] (v{_VERSION}).")
@@ -2656,7 +2657,7 @@ def main_interactive(runs_dir: Path, console: Console, preselect_run: str | None
             return
         state, cfg, prov = result
 
-    prov.log("tool_version", version=_VERSION)
+    prov.log("tool_version", version=_VERSION, interface="terminal", based_on=f"slr-pipeline {_UPSTREAM_VERSION}")
 
     run_phase_loop(state, cfg, prov, console)
     consolidation_menu(state, cfg, prov, console)

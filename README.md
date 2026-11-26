@@ -1,18 +1,54 @@
-# slr-pipeline
+# SLR Pipeline UI
 
-A guided, auditable pipeline for running a systematic literature review (SLR)
-end to end: protocol scoping, multi-source search, deduplication, screening,
-open-access PDF retrieval, data extraction, quality appraisal, and reporting
-against PRISMA 2020 and the Kitchenham & Charters guidelines. The mechanical
-parts of the method are implemented as small, deterministic Python scripts;
-the judgement calls stay with the reviewer.
+A desktop app for running a systematic literature review (SLR) end to end:
+protocol, multi-source search, deduplication, title/abstract screening,
+full-text assessment, data extraction, quality appraisal, PRISMA 2020 figures
+and an audit trail, in one window.
 
-The worked example used throughout the documentation is **machine-learning /
-AI-based intrusion detection systems (ML-IDS)**. Swap the search terms, the
-PICOC table, and the inclusion/exclusion criteria for your own topic; the
-pipeline and the method do not change.
+It is a redesigned and enhanced UI for the original SLR Pipeline project, built
+on top of [slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline) by
+Md Nayeem Hossain. The review method, the stage scripts and the guided terminal
+app are his work and ship here with only the small changes listed in the
+changelog; this project adds the desktop app around them. A review folder made in one interface opens in the
+other.
 
-## What makes it different
+![Review overview: next step, search phases and the PRISMA flow so far](https://raw.githubusercontent.com/faizunnur/SLR_Pipeline_UI/main/docs/img/overview.png)
+
+## What the desktop app adds
+
+- **One window for the whole review.** A list of your reviews with progress, an
+  overview that always shows the next step, and one page per stage: search,
+  screening, review gate, full text, extraction, outputs.
+- **Screening built for reading.** One record at a time with its abstract and
+  your eligibility criteria beside it, a filterable list, a progress bar, and
+  single-key decisions (`I` include, `M` maybe, `E` exclude, `J`/`K` to move).
+  Every decision you make by hand is written to the audit trail with your
+  initials, the same way an AI-assisted one is.
+- **AI assist without files.** Copy the prompt with one button, paste the
+  chatbot's reply into a box, and apply it. The reply is still checked against
+  the batch that was sent, and the prompt and reply are still saved next to the
+  review.
+- **A review gate you can see.** Proposed includes and excludes side by side,
+  with the fixed sample of AI exclusions the method asks you to check; flip a
+  record in either direction with one click and confirm.
+- **A live PRISMA flow.** Counts are derived from the review's own files every
+  time you look, with a warning when they do not balance yet.
+- **Work that is not silently lost.** Re-running a search starts a blank
+  screening sheet and keeps the old one as a backup; rebuilding the merged set
+  keeps full-text decisions; rebuilding the extraction sheet keeps what you
+  typed.
+- **Long stages stay visible.** Search, PDF download, citation verification and
+  figures run in the background with a live log and a cancel button.
+- **Light and dark themes**, keyboard navigation, and a browser mode for
+  machines without a native web view.
+
+| Screening | Review gate |
+|---|---|
+| ![Screening one record with its abstract](https://raw.githubusercontent.com/faizunnur/SLR_Pipeline_UI/main/docs/img/screening.png) | ![Review gate with includes and excludes](https://raw.githubusercontent.com/faizunnur/SLR_Pipeline_UI/main/docs/img/gate.png) |
+| **AI assist** | **Outputs** |
+| ![Copy the prompt, paste the reply](https://raw.githubusercontent.com/faizunnur/SLR_Pipeline_UI/main/docs/img/assist.png) | ![Evidence checks, figures, exports and reports](https://raw.githubusercontent.com/faizunnur/SLR_Pipeline_UI/main/docs/img/outputs.png) |
+
+## What the pipeline underneath does (unchanged from slr-pipeline)
 
 - **Citation verification is a pipeline stage.** Every reference's DOI is
   resolved against Crossref and its title matched against the record Crossref
@@ -23,14 +59,20 @@ pipeline and the method do not change.
   to an append-only provenance log that belongs to the project. The PRISMA
   counts and the first draft of the methods paragraph are generated from that
   record, not reconstructed from memory.
-- **Local-first.** The pipeline runs entirely on your own machine. Its only
-  network traffic is to the scholarly APIs it searches and to Crossref. Where
-  AI assistance is used, it is a manual-paste step into a chatbot you choose,
-  and every suggestion passes a human review gate before it becomes a
-  decision - so the assistance can be disclosed accurately.
+- **Local-first.** Everything runs on your own machine. The only network
+  traffic is to the scholarly APIs it searches and to Crossref. Where AI
+  assistance is used, it is a manual-paste step into a chatbot you choose, and
+  every suggestion passes a human review gate before it becomes a decision, so
+  the assistance can be disclosed accurately.
+
+The worked example used throughout the documentation is **machine-learning /
+AI-based intrusion detection systems (ML-IDS)**. Swap the search terms and the
+inclusion/exclusion criteria for your own topic; the method does not change.
 
 ## Documentation
 
+- [The desktop app](docs/desktop-app.md) - each screen, the keyboard shortcuts,
+  where your data lives, and how the app is put together.
 - [The 7-stage method](docs/methodology.md) - the methodology the pipeline
   implements, stage by stage, with the integrity and end-to-end checklists.
 - [Script reference](docs/script-reference.md) - every stage script and the
@@ -40,87 +82,80 @@ pipeline and the method do not change.
 
 ## Installing
 
-**Quickest: `pipx install slr-pipeline`** -- the package is published on
-PyPI, so no `git clone` is needed. It works identically on
-Windows/macOS/Linux and pulls in every dependency (pandas, matplotlib,
-etc. -- the full `dependencies` list in `pyproject.toml`) automatically.
-To run the latest code straight from GitHub instead:
-`pipx install git+https://github.com/nayeem-hossain/slr-pipeline.git`.
-
-`pipx` is a separate tool, not something Python/pip ships with -- if
-`pipx install ...` prints "not recognized as an internal or external
-command" (Windows) or "command not found" (macOS/Linux), that's this, not a
-problem with this project. Install it once, then **close and reopen your
-terminal** (this step edits your PATH, which an already-open terminal won't
-pick up):
+Python 3.10 or newer is required.
 
 ```bash
-python -m pip install --user pipx
-python -m pipx ensurepath
-# close and reopen your terminal here
+pip install slr-pipeline-ui
+slr-ui
 ```
 
-Then install and run the tool itself:
+`pipx install slr-pipeline-ui` works the same way and keeps the app in its own
+environment. To run the latest code from GitHub instead:
+`pip install git+https://github.com/faizunnur/SLR_Pipeline_UI.git`.
+
+Three commands are installed:
+
+| Command | What it starts |
+|---|---|
+| `slr-ui` | The desktop app, from a terminal. Use this one for `--help`. |
+| `slr-desktop` | The same app with no console window, for a shortcut or the Start menu. |
+| `slr` | The original guided terminal app, unchanged. |
+
+The window uses the web view your system already has: Edge WebView2 on Windows
+10/11, WebKit on macOS. On Linux install GTK or Qt bindings for
+[pywebview](https://pywebview.flowrl.com/guide/installation.html), or skip the
+window and run `slr-ui --browser`, which shows the same app in your default
+browser. Browser mode listens on `127.0.0.1` only and needs the one-time token
+in the address it opens.
+
+Do not install this next to the original `slr-pipeline` in the same
+environment: both provide the `slr` command and the `srp` package. This
+distribution already contains the pipeline.
+
+From a source checkout, without installing:
 
 ```bash
-pipx install slr-pipeline
-slr
+git clone https://github.com/faizunnur/SLR_Pipeline_UI.git
+cd SLR_Pipeline_UI
+pip install -r requirements.txt
+python -m slr_desktop        # run from the src/ folder, or with PYTHONPATH=src
 ```
 
-(`pipx` isolates the install in its own environment so it can't collide with
-another project's packages. Plain `pip install slr-pipeline` also works if
-you'd rather not use pipx -- but then you're managing your own virtual
-environment instead of getting one for free.)
+For a review you intend to publish, install the pinned versions in
+`requirements.lock` (plus `pywebview`) and cite them in your methods section.
 
-This installs the exact same code as the git-clone paths below --
-`src/scripts/*.py` ship alongside `src/slr.py` and remain individually readable and
-directly runnable from the installed copy, same as from a clone. Installing
-via pipx is a convenience for finding and updating the tool, not a reason to
-trust it any less than reading the source directly.
+## First review in five steps
 
-**Keeping up to date.** The guided TUI checks GitHub's latest release once at
-startup -- a single non-blocking network call, silent if you're offline or
-already current -- and prints a one-line notice if a newer version exists. It
-never auto-updates and never blocks you from continuing on an old version (see
-`CHANGELOG.md` for why: forcing an update mid-review risks changing dedup or
-counting behavior partway through a review's own corpus, which is worse than
-staying on the version you started with). Update yourself with:
+1. `slr-ui`, then **New review**. Enter the topic, one row of synonyms per
+   concept, your inclusion and exclusion criteria, the year range and a real
+   contact email. The search string is shown as you type.
+2. **Search**: press *Run search*. The log at the bottom shows each source;
+   the per-source record (retrieved, available, truncated) is kept for your
+   methods section.
+3. **Screening**: decide each record by hand, or use *AI assist* to paste
+   batches through a chatbot, then check them.
+4. **Review gate**: flip anything you disagree with, confirm. With more than
+   one phase, pick the expansion terms for the next search.
+5. **Full text**, **Extraction**, **Outputs**: record full-text decisions with
+   reasons, code the included studies, then generate the PRISMA diagram,
+   references, the methods paragraph and the provenance report.
 
-```bash
-pipx upgrade slr-pipeline
-```
+Your reviews live in a workspace folder (by default `Documents/SLR Pipeline`):
+one folder per review under `runs/`, and your API keys in `.env`. Keys are
+never written into a review folder, so a review folder is safe to share.
 
-If you installed from GitHub rather than PyPI, add `--force`:
-`pipx upgrade --force slr-pipeline`. The `--force` matters for git installs
-specifically, because every upgrade rebuilds the wheel from source -- the
-launcher pip generates for `slr.exe`
-comes out byte-different almost every time even when nothing you'd care
-about changed, and pipx's own shim-safety-check (which protects a shim it
-doesn't recognize as its own from being silently overwritten) flags that as
-a mismatch and refuses to touch it. Without `--force` you can see the
-package itself upgrade correctly (`pipx list` shows the new version) while
-`slr` on your PATH keeps running the old one, with a warning like:
+**Keeping up to date.** *Settings & about* has a *Check for updates* button. The
+app never updates itself: changing versions in the middle of a review can change
+deduplication or counting part-way through its corpus. Update when you choose
+to, with `pip install -U slr-pipeline-ui`. The version used (and the
+slr-pipeline release it is built on) is recorded in every review's provenance.
 
-```
-File exists at C:\Users\<you>\.local\bin\slr.exe and does not match
-...\pipx\venvs\slr-pipeline\Scripts\slr.exe. Not modifying.
-```
+## The terminal app and the stage scripts
 
-`--force` tells pipx to overwrite it as part of the same upgrade -- no
-separate reinstall step needed. If you already hit this warning on a plain
-`pipx upgrade`, either re-run with `--force` or run
-`pipx reinstall slr-pipeline` once to get back in sync.
+The desktop app is one of three ways to run the same pipeline. The other two
+come from slr-pipeline and work exactly as they do there.
 
-You can also check on demand from the guided TUI's consolidation menu's
-**"Check for updates"** action, which always reports a result (up to date /
-outdated / couldn't check) rather than staying silent. Note this only works
-going forward: the check can only run from a copy of the tool that already
-has the checking code in it. If you installed before this feature existed,
-`pipx upgrade` once gets you a copy that checks for itself from then on.
-
-## Two ways to run this
-
-**a) Guided (recommended): `python src/slr.py`** (or just `slr` if pip/pipx-installed)
+**a) Guided terminal app: `python src/slr.py`** (or just `slr` if pip/pipx-installed)
 
 An interactive terminal (needs `questionary` + `rich`, see [Running the
 pipeline](#running-the-pipeline) below) that walks you through a setup wizard
@@ -263,9 +298,16 @@ and don't need touching for a normal review either.
 ## Repository layout
 
 ```
-slr-pipeline/
+SLR_Pipeline_UI/
 ├── src/
-│   ├── slr.py                  # guided interactive entry point (run this)
+│   ├── slr_desktop/            # the desktop app (new in this project)
+│   │   ├── app.py              # starts the window (`slr-ui`, `slr-desktop`)
+│   │   ├── api.py              # the bridge the page calls
+│   │   ├── service.py          # every pipeline operation, with no UI code
+│   │   ├── jobs.py             # background tasks with a live log
+│   │   ├── server.py           # browser mode (`slr-ui --browser`)
+│   │   └── web/                # the front end: HTML, CSS, JavaScript
+│   ├── slr.py                  # guided terminal app (`slr`)
 │   ├── srp/                    # importable library
 │   │   ├── config.py           # ReviewConfig (secrets are never persisted)
 │   │   ├── env.py              # .env loader
@@ -300,12 +342,13 @@ slr-pipeline/
 │   # not distributed with the releases, so a `pipx`/`pip install git+...` never
 │   # has to download 50 MB of example PDFs to run the tool.
 ├── .github/workflows/tests.yml # CI: runs the pytest suite on push/PR
-├── pyproject.toml              # package metadata; `slr` console-script entry point for pipx/pip
+├── pyproject.toml              # package metadata; `slr-ui`, `slr-desktop` and `slr` entry points
 ├── requirements.txt            # minimum versions
 ├── requirements.lock           # exact pins -- use these for a review you'll publish
 ├── .env.example
 ├── CITATION.cff                # citation metadata for the software
-├── LICENSE.txt                 # MIT -- applies to the code (src/slr.py, src/srp/, src/scripts/)
+├── LICENSE.txt                 # MIT -- applies to the code (everything under src/)
+├── NOTICE                      # what comes from slr-pipeline and what is new here
 ├── LICENSE-docs                # CC-BY-4.0 -- applies to README.md, docs/, examples/README.md
 └── .gitignore                  # ignores output/, pdfs/, runs/ -- a real run's working files
 ```
@@ -343,23 +386,32 @@ query-expansion loop between search rounds and the always-on provenance log.
 
 ## Citing
 
-If slr-pipeline contributes to a published review, please cite the software
-using the metadata in `CITATION.cff` (GitHub renders it as the "Cite this
-repository" button). Reviews run with the pipeline should also report the
+If this software contributes to a published review, please cite it using the
+metadata in `CITATION.cff` (GitHub renders it as the "Cite this repository"
+button), and cite the original
+[slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline) it is built on;
+`CITATION.cff` lists it under `references`. Reviews should also report the
 version used; the provenance report records it automatically.
+
+## Credits
+
+The review pipeline, its methodology and the guided terminal app are the work
+of **Md Nayeem Hossain**: [slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline).
+SLR Pipeline UI is built on release 1.3.4 of that project. [`NOTICE`](NOTICE)
+lists which files come from it and which are new here.
 
 ## License
 
-This repository's licensing is split by content type:
+Licensing is split by content type, as in the original project:
 
-- **Code** (`slr.py`, `src/srp/`, and every script under `src/scripts/` -- `search.py`,
-  `dedup.py`, `screen.py`, `assist.py`, `download.py`, `verify_citations.py`,
-  `extract.py`, `figures.py`, `export.py`) is licensed under the **MIT
-  License** -- see [`LICENSE.txt`](LICENSE.txt).
-- **Documentation** (this README and `examples/README.md`) is licensed under
-  **Creative Commons Attribution 4.0 International (CC-BY-4.0)** -- see
-  [`LICENSE-docs`](LICENSE-docs). You're free to reuse, adapt, and redistribute
-  the methodology write-up for any purpose, including commercially, as long as
-  you give appropriate credit.
+- **Code** (everything under `src/`: the desktop app in `src/slr_desktop/`, and
+  `slr.py`, `src/srp/`, `src/scripts/` from slr-pipeline) is licensed under the
+  **MIT License** -- see [`LICENSE.txt`](LICENSE.txt).
+- **Documentation** (this README, `docs/` and `examples/README.md`) is licensed
+  under **Creative Commons Attribution 4.0 International (CC-BY-4.0)** -- see
+  [`LICENSE-docs`](LICENSE-docs). It is adapted from slr-pipeline's
+  documentation; the changes are stated in that file.
 
-Copyright (c) 2026 Md Nayeem Hossain.
+Copyright (c) 2026 faizunnur (SLR Pipeline UI: the desktop app and the changes
+made in this repository).
+Copyright (c) 2026 Md Nayeem Hossain (the original slr-pipeline).

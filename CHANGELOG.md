@@ -6,6 +6,69 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-27
+
+First release of **slr-pipeline-ui**: a desktop app built on
+[slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline) 1.3.4 by
+Md Nayeem Hossain. Version numbers from here on are this project's own; the
+entries below 1.0.0 are the upstream project's history, kept for reference.
+
+### Added
+
+- **Desktop app** (`slr-ui`, or `slr-desktop` with no console window): a native
+  window with a review list, a per-review overview that shows the next step,
+  and a page for each stage -- search, title/abstract screening, review gate
+  and query expansion, full-text screening, extraction, outputs, activity.
+- **Screening by hand in the app.** One record at a time with its abstract and
+  the review's criteria, list filters, and single-key decisions. Each decision
+  is written to `screening.csv` with the reviewer's initials and to
+  `decisions.jsonl` with `source: human-review`.
+- **AI assist by copy and paste.** The prompt is copied with a button and the
+  reply is pasted into the app. The prompt and reply files are still written to
+  the phase folder, and the reply goes through the same parser and the same
+  `apply_decisions` path as the terminal app.
+- **Live PRISMA counts** on the overview, from `srp.prisma`, with the residual
+  warnings shown when the numbers do not balance.
+- **Background tasks with a live log and cancel** for search, PDF download,
+  citation verification, extraction-sheet build, figures and snowballing. One
+  task runs at a time.
+- **Screening the citation-snowball sheet in the app**, then merging it.
+- **Browser mode** (`slr-ui --browser`) for systems with no native web view.
+  It binds to 127.0.0.1, requires a per-session token, and checks the Host
+  header.
+- **Workspace folder** (default `Documents/SLR Pipeline`) holding `runs/` and
+  `.env`, chosen in the app; light and dark themes.
+- `NOTICE`, listing what comes from slr-pipeline and what is new.
+- Tests for the desktop service and the browser-mode server
+  (`tests/test_desktop_*.py`).
+
+### Changed
+
+- The distribution is named `slr-pipeline-ui`. It contains the pipeline, so it
+  replaces `slr-pipeline` in an environment rather than sitting next to it.
+- **Re-running a phase's search from the desktop app starts a blank screening
+  sheet**, and keeps the previous one as `screening.before-rerun-<time>.csv`.
+  `screen.py` carries decisions over by row id when a sheet already exists;
+  after a new search the same id can belong to a different paper, so carrying
+  them over would attach a decision to a record it was never made for. (The
+  terminal app's re-run path is unchanged.)
+- **Rebuilding the merged set from the desktop app keeps full-text decisions**
+  for studies still in the set, and keeps merged snowball rows. Previously a
+  rebuild returned them to blank.
+- **Rebuilding the extraction sheet from the desktop app keeps values already
+  entered**, matched by study id.
+- A later phase's re-run keeps the expanded query chosen at the previous gate
+  instead of falling back to the base query.
+- The `tool_version` provenance event now records the interface (`desktop` or
+  `terminal`) and the slr-pipeline release this build is based on, and
+  `PROVENANCE.md` prints that line.
+- The update check and the links printed by the terminal app point at this
+  repository.
+- `LICENSE.txt` and `LICENSE-docs` carry this project's copyright line next to
+  the original author's, which is retained. `CITATION.cff` cites this project
+  and lists slr-pipeline under `references`.
+
+
 ## [1.3.4] - 2026-11-25
 
 ### Changed

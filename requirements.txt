@@ -17,3 +17,6 @@ questionary>=2.0
 rich>=13.0
 
 # Tests only, not needed to run the pipeline:  pip install pytest
+
+# Desktop app window (`slr-ui` / `slr-desktop`). Not needed for the terminal app or the stage scripts.
+pywebview>=5.0

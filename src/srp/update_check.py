@@ -13,7 +13,7 @@ import re
 
 import requests
 
-REPO = "nayeem-hossain/slr-pipeline"
+REPO = "faizunnur/SLR_Pipeline_UI"
 _RELEASES_API = f"https://api.github.com/repos/{REPO}/releases/latest"
 
 

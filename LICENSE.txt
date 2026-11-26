@@ -1,6 +1,9 @@
 MIT License
 
-Copyright (c) 2026 Md Nayeem Hossain
+Copyright (c) 2026 faizunnur (slr-pipeline-ui: the desktop app in
+src/slr_desktop/ and all changes made in this repository)
+Copyright (c) 2026 Md Nayeem Hossain (the original slr-pipeline,
+https://github.com/nayeem-hossain/slr-pipeline, on which this work is built)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,0 +1,29 @@
+slr-pipeline-ui
+Copyright (c) 2026 faizunnur
+
+This project is a redesigned and enhanced user interface for the SLR Pipeline
+project, built on top of:
+
+    slr-pipeline
+    Copyright (c) 2026 Md Nayeem Hossain
+    https://github.com/nayeem-hossain/slr-pipeline
+    Code: MIT License. Documentation: CC BY 4.0.
+
+What comes from the original project
+    src/slr.py, src/srp/, src/scripts/   the review pipeline and the guided
+                                         terminal app
+    docs/methodology.md, docs/script-reference.md, docs/ai-assist.md,
+    examples/                            the methodology write-up and examples
+    tests/ (all files except test_desktop_*.py)
+
+What is new in this repository
+    src/slr_desktop/                     the desktop app (window, front end,
+                                         service layer, browser mode)
+    tests/test_desktop_*.py
+    docs/desktop-app.md
+    Small changes to the original files, listed in CHANGELOG.md under 1.0.0.
+
+Both parts are distributed under the MIT License (LICENSE.txt). The original
+copyright notice is retained as that license requires. The documentation is
+distributed under CC BY 4.0 (LICENSE-docs), with attribution to the original
+author and a statement of the changes made.

@@ -1,6 +1,16 @@
 Creative Commons Attribution 4.0 International Public License
 
-Copyright (c) 2026 Md Nayeem Hossain
+Copyright (c) 2026 Md Nayeem Hossain (original documentation of slr-pipeline,
+https://github.com/nayeem-hossain/slr-pipeline)
+Copyright (c) 2026 faizunnur (changes and additions for slr-pipeline-ui)
+
+ATTRIBUTION AND CHANGES (CC BY 4.0, Section 3(a)): the documentation in this
+repository is adapted from the documentation of slr-pipeline by Md Nayeem
+Hossain, licensed under CC BY 4.0. It was modified for slr-pipeline-ui: the
+README was rewritten around the desktop app, docs/desktop-app.md was added,
+and installation and command names were updated. The adapted documentation
+is offered under the same license, CC BY 4.0. Md Nayeem Hossain does not
+endorse this adaptation.
 
 This license applies to the documentation and prose content of this repository
 (README.md and any other Markdown/text files describing the methodology), NOT
@@ -37,7 +47,8 @@ d. Licensed Rights means the rights granted to You subject to the terms and
    Similar Rights that apply to Your use of the Licensed Material and that
    the Licensor has authority to license.
 e. Licensor means the individual(s) or entity(ies) granting rights under this
-   Public License: Md Nayeem Hossain.
+   Public License: Md Nayeem Hossain for the original material, and
+   faizunnur for the changes and additions made for slr-pipeline-ui.
 f. Share means to provide material to the public by any means or process that
    requires permission under the Licensed Rights, such as reproduction,
    public display, public performance, distribution, dissemination,

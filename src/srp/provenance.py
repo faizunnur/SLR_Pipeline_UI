@@ -316,6 +316,11 @@ class Provenance:
                     line += (f" (this review was also worked on under {', '.join(earlier)} -- "
                               f"see the search & processing log for exactly when)")
                 lines.append(line)
+                # The version above is slr-pipeline-ui's. Name the upstream release
+                # it is built on too, so a methods section can cite both.
+                based_on = version_events[-1].get("based_on")
+                if based_on:
+                    lines.append(f"- **Tool:** slr-pipeline-ui, built on {based_on}")
             if config.get("registration_id"):
                 lines.append(f"- **Protocol registration:** {config['registration_id']}")
             else:

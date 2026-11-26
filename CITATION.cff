@@ -1,18 +1,29 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+message: "If you use this software, please cite it as below, and cite the original slr-pipeline it is built on (see references)."
 type: software
-title: "slr-pipeline"
-abstract: "A guided, auditable systematic-literature-review pipeline: search, dedup, screen, extract, appraise, and report against PRISMA 2020, with citation verification and a full provenance record."
+title: "slr-pipeline-ui"
+abstract: "A desktop app for running a systematic literature review end to end: search, dedup, screening, full-text assessment, extraction, PRISMA 2020 figures, citation verification and a full provenance record. A redesigned UI built on slr-pipeline."
 authors:
-  - family-names: "Hossain"
-    given-names: "Md Nayeem"
-version: "1.3.4"
-date-released: "2026-11-25"
+  - name: "faizunnur"
+version: "1.0.0"
+date-released: "2026-11-27"
 license: "MIT"
-repository-code: "https://github.com/nayeem-hossain/slr-pipeline"
+repository-code: "https://github.com/faizunnur/SLR_Pipeline_UI"
 keywords:
   - systematic literature review
   - PRISMA 2020
   - citation verification
   - provenance
   - research software
+  - desktop application
+references:
+  - type: software
+    title: "slr-pipeline"
+    authors:
+      - family-names: "Hossain"
+        given-names: "Md Nayeem"
+    version: "1.3.4"
+    date-released: "2026-11-25"
+    license: "MIT"
+    repository-code: "https://github.com/nayeem-hossain/slr-pipeline"
+    notes: "The pipeline (search, dedup, screening, extraction, appraisal, reporting) that slr-pipeline-ui is built on."

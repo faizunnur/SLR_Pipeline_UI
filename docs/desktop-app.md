@@ -1,0 +1,174 @@
+# The desktop app
+
+`slr-ui` opens a window that runs the whole review. This page describes each
+screen, where your data is kept, and how the app is put together.
+
+The method itself is described in [methodology.md](methodology.md); the app
+does not change it. Every stage runs the same script, writes the same files and
+logs the same events as the guided terminal app (`slr`), so a review started in
+one can be continued in the other.
+
+## Starting it
+
+```bash
+slr-ui                          # the window
+slr-ui --workspace D:\Reviews   # use (and remember) another workspace folder
+slr-ui --browser                # no native web view: show it in your browser
+slr-ui --debug                  # open the web inspector with the window
+```
+
+`slr-desktop` is the same program without a console window, for a shortcut.
+
+## Where your data lives
+
+| What | Where |
+|---|---|
+| Reviews | `<workspace>/runs/<review-id>/` (one folder per review) |
+| API keys | `<workspace>/.env` |
+| App preferences (workspace path, theme) | `~/.slr-pipeline-ui/settings.json` |
+
+The default workspace is `Documents/SLR Pipeline`. Change it under *Settings &
+about*. API keys are loaded into memory when the app starts and are never
+written into a review folder, so a review folder can be shared or attached as a
+reproducibility appendix without leaking a credential.
+
+## The screens
+
+### All reviews
+
+One card per review with its topic, the next step and a progress bar.
+**New review** opens a seven-step form: question (topic and search concepts),
+eligibility criteria, reporting items (registration, grey literature,
+reporting-bias plan, funding), appraisal instrument, search settings, people,
+and a confirmation page. Keywords and criteria are part of the protocol and are
+fixed once the review is created. The contact email, years, sources, the
+per-source cap, the reviewer name and the AI tool name can be edited later
+(*Overview > Edit search settings*).
+
+### Overview
+
+- **Next step**, with a button that takes you there.
+- **Search phases**: for each phase, the state of search, screening, review
+  gate and query expansion.
+- **PRISMA flow so far**: identified, duplicates removed, screened, excluded,
+  assessed at full text, included. Derived from the files on disk each time.
+- **Protocol**: the search string, criteria and appraisal instrument.
+
+### Search
+
+Runs `search.py`, `dedup.py` and `screen.py` for the phase, in the background,
+with the log at the bottom of the window. Afterwards the page shows the counts
+and the per-source record (status, retrieved, available, truncated), which is
+saved as `search_strategy.csv`.
+
+**Re-run search** asks first. It starts a blank screening sheet and keeps the
+old one as `screening.before-rerun-<time>.csv`, because a new search gives the
+same row ids to different papers.
+
+### Screening
+
+Two modes, switched at the top:
+
+- **Screen by hand.** A list on the left, one record on the right. Filter by
+  status or text.
+
+  | Key | Action |
+  |---|---|
+  | `I` / `M` / `E` | Include / maybe / exclude the open record |
+  | `J` or `↓`, `K` or `↑` | Next / previous record |
+  | `R` | Jump to the reason box |
+  | `Esc` | Leave a text box |
+
+  Include and maybe both go on to full-text reading. A record that was already
+  judged in another phase shows that earlier decision as a hint.
+- **AI assist (copy and paste).** The app shows a prompt for the next batch of
+  20 undecided records. Copy it into any web chatbot, paste the answer back,
+  and press *Apply decisions*. Nothing is sent anywhere by the app. A reply
+  line for an id that was not in the batch is refused, and a record that
+  already has a decision is left alone. *Skip this batch* leaves those records
+  for manual screening.
+
+### Review gate
+
+Shows what proceeds to full text and what was excluded. For AI exclusions the
+default view is the fixed sample of 20 the method asks you to check (seeded by
+the phase number, so it is the same every time); you can also list all of them.
+Mark records to exclude or rescue, then **Confirm gate**. The gate cannot be
+confirmed while any record in the phase has no decision.
+
+With more than one phase, the gate page then offers **query expansion**: terms
+frequent in the titles you kept. Pick some, add your own, and the next phase
+opens with the expanded search string.
+
+### Full text
+
+The studies that passed title/abstract screening, across all phases. Record
+include or exclude for each; an exclusion requires a reason (PRISMA item 16b).
+*Download open-access PDFs* fetches what is legally available; a downloaded PDF
+gets an *Open PDF* button on its record.
+
+### Extraction
+
+*Build extraction sheet* creates one row per included study. Set venue tier and
+the R/A/T/C ratings in the table; the quality tier is computed from them.
+Choosing a tier by hand is allowed and is logged as a manual override. Text
+fields and the appraisal-instrument checklist are edited in the side panel and
+saved when you leave a field. Every edit is written to the audit trail.
+
+### Outputs
+
+- **Evidence**: download PDFs, verify citations against Crossref, citation
+  snowballing (then screen its results and merge them), inter-rater agreement
+  between two sheets, and a per-phase diagnosis for a review that came back
+  empty.
+- **Figures**: PRISMA flow diagrams and tier charts, PNG and PDF.
+- **Exports and reports**: BibTeX/RIS, the full-text exclusion table, the draft
+  methods paragraph, `PROVENANCE.md`, and a review self-appraisal checklist.
+- **Files**: everything the review has produced, each with an *Open* button.
+
+### Activity
+
+The provenance log, newest first.
+
+## How it is put together
+
+```
+ window (pywebview)                Python process
+┌──────────────────────┐          ┌──────────────────────────────────────┐
+│ web/index.html       │  bridge  │ api.py      one method per call,     │
+│ web/*.js  (no build) │ ───────► │             returns {ok, data|error} │
+│ web/app.css          │          │ service.py  pipeline operations      │
+└──────────────────────┘          │ jobs.py     one background task,     │
+                                  │             streamed log, cancel     │
+                                  │   │                                  │
+                                  │   ├─► srp/*        (library, reused) │
+                                  │   └─► scripts/*.py (child processes) │
+                                  └──────────────────────────────────────┘
+```
+
+- **Front end.** Plain HTML, CSS and JavaScript with no framework and no build
+  step, so the installed package is the source you can read. Record titles and
+  abstracts come from external APIs, so the page never writes them as HTML:
+  every element is created through one helper that sets text only. A
+  Content-Security-Policy allows scripts and styles from the app's own files
+  only.
+- **Bridge.** In the window, calls go through pywebview's in-process bridge. In
+  browser mode the same calls go to a small local server (`server.py`).
+- **Service.** `service.py` has no UI code and returns plain dictionaries,
+  which is what makes it testable without a window
+  (`tests/test_desktop_service.py`). It imports the terminal app's pure helper
+  functions instead of copying them.
+- **Tasks.** A stage script is started as a child process; its output is
+  collected line by line on a worker thread and the page polls for new lines.
+  API keys are passed through the child's environment, not its command line,
+  and a secret flag value is masked in the log.
+
+## Running the tests
+
+```bash
+pip install pytest
+python -m pytest tests/
+```
+
+The desktop tests need no window and no network: the search output is seeded
+from `examples/`, and every later stage runs the real script.

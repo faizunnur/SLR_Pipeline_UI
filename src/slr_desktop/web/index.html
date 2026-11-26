@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'">
+  <title>SLR Pipeline UI</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <main class="view" id="view"></main>
+      <div class="dock hidden" id="dock"></div>
+    </div>
+  </div>
+  <div id="modal-root"></div>
+  <div class="toasts" id="toasts"></div>
+  <script src="core.js"></script>
+  <script src="views-home.js"></script>
+  <script src="views-run.js"></script>
+  <script src="views-screen.js"></script>
+  <script src="views-outputs.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
