@@ -24,6 +24,13 @@ other.
   single-key decisions (`I` include, `M` maybe, `E` exclude, `J`/`K` to move).
   Every decision you make by hand is written to the audit trail with your
   initials, the same way an AI-assisted one is.
+- **No API key needed for the big databases.** Export your results from Scopus,
+  Web of Science, IEEE Xplore or PubMed as a file (RIS, BibTeX, CSV, `.nbib`)
+  and import it. Imported records are de-duplicated, screened and counted in
+  the PRISMA flow exactly like searched ones.
+- **Faster reading.** Your search keywords are highlighted in every abstract,
+  plus your own "include" and "exclude" words. A row of exclusion reasons lets
+  you exclude with a reason in one key (`1` to `9`), and `U` undoes a slip.
 - **AI assist without files.** Copy the prompt with one button, paste the
   chatbot's reply into a box, and apply it. The reply is still checked against
   the batch that was sent, and the prompt and reply are still saved next to the

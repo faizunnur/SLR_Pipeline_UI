@@ -69,6 +69,26 @@ with the log at the bottom of the window. Afterwards the page shows the counts
 and the per-source record (status, retrieved, available, truncated), which is
 saved as `search_strategy.csv`.
 
+**Import from a file** adds records you exported from a database website. Use
+it for databases that do not give you an API key (Scopus, Web of Science, IEEE
+Xplore), or instead of the online search altogether.
+
+1. In the database, run your search, select all results, choose *Export*, and
+   pick RIS, BibTeX or CSV with abstracts included. PubMed's *Citation manager*
+   file (`.nbib`) also works.
+2. In the app, choose the file. A preview shows how many records it holds and
+   how many have an abstract, a DOI and a year.
+3. Say which database it came from, the date you searched, and paste the search
+   string you used there. PRISMA items 6 and 7 ask you to report these; they go
+   into the per-source search record and the methods draft.
+
+The records join the phase like search results. Duplicates of records you
+already have are removed, existing record ids and decisions are kept, and a
+phase's review gate re-opens if the import brought new records to decide. The
+same file cannot be imported twice into a phase. The imported records are also
+kept as `imported.csv` in the phase folder, so a later search does not drop
+them.
+
 **Re-run search** asks first. It starts a blank screening sheet and keeps the
 old one as `screening.before-rerun-<time>.csv`, because a new search gives the
 same row ids to different papers.
@@ -83,9 +103,26 @@ Two modes, switched at the top:
   | Key | Action |
   |---|---|
   | `I` / `M` / `E` | Include / maybe / exclude the open record |
+  | `1` to `9` | Exclude with that quick reason |
+  | `U` or `Ctrl+Z` | Undo your last decision |
   | `J` or `↓`, `K` or `↑` | Next / previous record |
   | `R` | Jump to the reason box |
   | `Esc` | Leave a text box |
+
+  **Highlighted words.** The search keywords of the review are marked in the
+  title and abstract. *Highlighted words* (bottom right of the record) lets you
+  add words that point to include and words that point to exclude; `*` matches
+  any ending (`evaluat*`). The three groups differ by the line under the word
+  as well as by colour. They are a reading aid and never change a decision.
+
+  **Quick reasons.** The *Exclude:* row holds up to nine reasons. Pressing a
+  number, or clicking a reason, excludes the open record with that reason and
+  moves on. *Edit list* changes the list for this review. Typing a reason and
+  pressing `E` still works.
+
+  **Undo** takes back the last decision, up to 100 steps, also back to "no
+  decision". It is recorded in `decisions.jsonl` with the source
+  `human-review/undo`. The undo list is kept while the app is open.
 
   Include and maybe both go on to full-text reading. A record that was already
   judged in another phase shows that earlier decision as a hint.
@@ -111,7 +148,10 @@ opens with the expanded search string.
 ### Full text
 
 The studies that passed title/abstract screening, across all phases. Record
-include or exclude for each; an exclusion requires a reason (PRISMA item 16b).
+include or exclude for each; an exclusion requires a reason (PRISMA item 16b),
+typed or picked from the quick reasons. Highlighted words and undo work here as
+they do at title/abstract screening; undoing a decision after the stage was
+complete re-opens it.
 *Download open-access PDFs* fetches what is legally available; a downloaded PDF
 gets an *Open PDF* button on its record.
 

@@ -17,10 +17,12 @@ as the terminal app would, so a run can be continued in either interface.
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 import math
 import os
+import re
 import shutil
 import sys
 from collections import Counter
@@ -48,6 +50,7 @@ from srp.provenance import Provenance
 from srp.quality_tier import compute_quality_tier
 from srp.state import RunState, record_key
 
+from slr_desktop import importer
 from slr_desktop.jobs import JobContext, JobManager
 
 APP_NAME = "SLR Pipeline UI"
@@ -130,6 +133,10 @@ KEY_HELP = {
 }
 EXTRACTION_FIELDS = list(tui._EXTRACTION_EDIT_FIELDS)
 EXTRACTION_ENUMS = dict(tui._EXTRACTION_ENUM_CHOICES)
+CANDIDATE_COLUMNS = ["id", "source", "title", "authors", "year", "venue", "doi", "url", "abstract"]
+# One-click exclusion reasons a new review starts with; each review can edit its own list.
+DEFAULT_REASONS = ["Wrong topic", "Wrong population", "Wrong study design", "Not primary research",
+                   "Wrong publication type", "Not in English", "Outside date range", "No full text"]
 PHASE_STAGES = ("search", "dedup", "prescreen", "assist_ta", "review_gate", "snowball")
 
 # Files a finished review produces, in the order the Outputs page lists them.
@@ -645,9 +652,15 @@ class ReviewService:
                 cmd += ["--scopus-insttoken", cfg.scopus_insttoken]
             if not ctx.run(cmd, f"Phase {phase}: searching sources", secret_env=cfg.secret_env()):
                 raise ServiceError("The search did not finish. See the log above, then retry.")
+            # Records imported from files are part of this phase's record set: a
+            # search (or re-search) must not drop them.
+            n_imported = self._fold_imports(state, phase, pdir)
+            if n_imported:
+                ctx.log(f"Added the {n_imported} record(s) imported from files to the search results.")
             n_hits = len(tui._read_csv_safe(candidates_path))
-            state.mark_stage(phase, "search", counts={"n_hits": n_hits})
-            prov.log("search_run", phase=phase, query=query, sources=cfg.sources, n_hits=n_hits)
+            state.mark_stage(phase, "search", counts={"n_hits": n_hits, "n_imported": n_imported})
+            prov.log("search_run", phase=phase, query=query, sources=cfg.sources, n_hits=n_hits,
+                     n_imported=n_imported)
             strategy = tui._read_csv_safe(strategy_path)
             if not strategy.empty and "truncated" in strategy.columns:
                 truncated = strategy.loc[strategy["truncated"].astype(str).str.lower().eq("true"),
@@ -685,6 +698,287 @@ class ReviewService:
                 "truncated", "status", "detail"]
         return _rows(df, [c for c in cols if c in df.columns])
 
+    # --- importing records exported from a database website ----------------
+    @staticmethod
+    def _import_problem(fn, *args):
+        try:
+            return fn(*args)
+        except importer.ImportProblem as e:
+            raise ServiceError(str(e))
+
+    def preview_import(self, path: str) -> dict:
+        """What a file holds, before anything is added to the review."""
+        file_path = Path((path or "").strip().strip('"'))
+        info = self._import_problem(importer.parse_file, file_path)
+        recs = info["records"]
+        low = file_path.name.lower()
+        guess = next((label for hint, label in (
+            ("scopus", "Scopus"), ("savedrecs", "Web of Science"), ("wos", "Web of Science"),
+            ("ieee", "IEEE Xplore"), ("export20", "IEEE Xplore"), ("pubmed", "PubMed"),
+            ("embase", "Embase"), ("acm", "ACM Digital Library"), ("sciencedirect", "ScienceDirect"),
+            ("ebsco", "EBSCOhost"), ("proquest", "ProQuest")) if hint in low),
+            "PubMed" if info["format"] == "MEDLINE" else "")
+        return {"path": str(file_path.resolve()), "name": file_path.name,
+                "format": info["format"], "n_records": len(recs), "n_no_title": info["n_no_title"],
+                "n_abstract": sum(1 for r in recs if r["abstract"]),
+                "n_doi": sum(1 for r in recs if r["doi"]),
+                "n_year": sum(1 for r in recs if r["year"]),
+                "sample": [r["title"] for r in recs[:5]], "source_guess": guess}
+
+    @staticmethod
+    def _imports(state, phase: int) -> list:
+        return state.state.setdefault(f"phase_{phase}_imports", [])
+
+    def list_imports(self, run_id: str, phase: int) -> list[dict]:
+        state, _, _ = self._load(run_id)
+        return list(state.state.get(f"phase_{int(phase)}_imports", []))
+
+    @staticmethod
+    def _append_candidates(candidates_path: Path, rows: pd.DataFrame) -> int:
+        """Append records to candidates.csv with fresh ids; existing ids never change."""
+        existing = tui._read_csv_safe(candidates_path)
+        start = 1
+        if not existing.empty and "id" in existing.columns:
+            start = int(pd.to_numeric(existing["id"], errors="coerce").max()) + 1
+        rows = rows[[c for c in CANDIDATE_COLUMNS if c != "id"]].copy()
+        rows.insert(0, "id", range(start, start + len(rows)))
+        out = rows if existing.empty else pd.concat([existing, rows], ignore_index=True)
+        out["year"] = pd.to_numeric(out["year"], errors="coerce").astype("Int64")
+        out.to_csv(candidates_path, index=False, encoding="utf-8")
+        return len(rows)
+
+    @staticmethod
+    def _append_strategy(strategy_path: Path, entries: list) -> None:
+        cols = ["source", "query_sent", "retrieved_at", "n_retrieved", "total_available",
+                "truncated", "status", "detail"]
+        rows = pd.DataFrame([{
+            "source": e["source"], "query_sent": e.get("query", ""), "retrieved_at": e.get("searched_on", ""),
+            "n_retrieved": e["n_records"], "total_available": e["n_records"], "truncated": False,
+            "status": "imported", "detail": f"file import: {e['file']} ({e['format']})"} for e in entries],
+            columns=cols)
+        existing = tui._read_csv_safe(strategy_path)
+        out = rows if existing.empty else pd.concat([existing, rows], ignore_index=True)
+        out.to_csv(strategy_path, index=False, encoding="utf-8")
+
+    def _fold_imports(self, state, phase: int, pdir: Path) -> int:
+        """After search.py rewrote candidates.csv and search_strategy.csv, put the
+        phase's file imports back. Returns how many records were added."""
+        entries = state.state.get(f"phase_{phase}_imports", [])
+        stored = tui._read_csv_safe(pdir / "imported.csv")
+        if not entries or stored.empty:
+            return 0
+        n = self._append_candidates(pdir / "candidates.csv", stored)
+        self._append_strategy(pdir / "search_strategy.csv", entries)
+        return n
+
+    def start_import(self, run_id: str, phase: int, path: str, source: str,
+                     query: str = "", searched_on: str = ""):
+        """Add the records in an exported file to a phase, then rebuild the
+        duplicates check and the screening sheet. Decisions already made stay."""
+        state, _, _ = self._load(run_id)
+        phase = int(phase)
+        if phase > 1 and state.state.get("current_phase", 1) < phase:
+            raise ServiceError(f"Phase {phase} is not open yet.")
+        source = re.sub(r"\s+", " ", source or "").strip()
+        if not source:
+            raise ServiceError("Say which database the file came from. It is reported with "
+                               "your search (PRISMA item 6).")
+        file_path = Path((path or "").strip().strip('"'))
+        parsed = self._import_problem(importer.parse_file, file_path)
+        digest = hashlib.sha256(file_path.read_bytes()).hexdigest()
+        if any(e.get("sha256") == digest for e in state.state.get(f"phase_{phase}_imports", [])):
+            raise ServiceError(f"{file_path.name} was already imported into phase {phase}. "
+                               "Importing it twice would count every record twice.")
+        query = (query or "").strip()
+        searched_on = (searched_on or "").strip() or date.today().isoformat()
+
+        def task(ctx: JobContext):
+            st, c, pv = self._load(run_id)
+            pdir = st.phase_dir(phase)
+            sheet_path = pdir / "screening.csv"
+            old_sheet = tui._read_csv_safe(sheet_path)
+            search_entry = st.state.get("stages", {}).get(f"{phase}:search")
+            imported_only = search_entry is None or bool(search_entry.get("counts", {}).get("imported_only"))
+
+            rows = pd.DataFrame(parsed["records"])
+            rows.insert(0, "source", source)
+            ctx.log(f"Read {len(rows)} record(s) from {file_path.name} ({parsed['format']}).")
+            if parsed["n_no_title"]:
+                ctx.log(f"Skipped {parsed['n_no_title']} entr(ies) with no title.")
+
+            entry = {"file": file_path.name, "sha256": digest, "format": parsed["format"],
+                     "source": source, "query": query, "searched_on": searched_on,
+                     "n_records": len(rows), "imported_at": datetime.now().isoformat(timespec="seconds")}
+            stored = tui._read_csv_safe(pdir / "imported.csv")
+            keep = rows[[col for col in CANDIDATE_COLUMNS if col != "id"]]
+            (keep if stored.empty else pd.concat([stored, keep], ignore_index=True)) \
+                .to_csv(pdir / "imported.csv", index=False, encoding="utf-8")
+            self._append_candidates(pdir / "candidates.csv", rows)
+            self._append_strategy(pdir / "search_strategy.csv", [entry])
+            self._imports(st, phase).append(entry)
+            if not st.state.get(f"phase_{phase}_query"):
+                st.state[f"phase_{phase}_query"] = c.search_query()
+            # The duplicates check and the sheet are rebuilt over the larger set.
+            for s in ("dedup", "prescreen"):
+                st.state.get("stages", {}).pop(f"{phase}:{s}", None)
+            counts = {"n_hits": len(tui._read_csv_safe(pdir / "candidates.csv")),
+                      "n_imported": sum(e["n_records"] for e in self._imports(st, phase))}
+            if imported_only:
+                counts["imported_only"] = True
+            st.mark_stage(phase, "search", counts=counts)
+
+            self._run_search_dedup_prescreen(ctx, st, c, pv, phase, pdir, st.state[f"phase_{phase}_query"])
+            n_rescued = self._rescue_decisions(pdir, old_sheet)
+            if n_rescued:
+                ctx.log(f"{n_rescued} decision(s) moved to the better copy of the same record "
+                        "(the imported copy has a DOI or an abstract the earlier one lacked).")
+            sheet = tui._read_csv_safe(sheet_path)
+            n_new = max(len(sheet) - len(old_sheet), 0)
+            n_undecided = (int(_blank_mask(sheet["ta_decision"]).sum())
+                           if "ta_decision" in sheet.columns else len(sheet))
+            if n_undecided:
+                # new records need a decision, so an earlier gate no longer covers the phase
+                for s in ("assist_ta", "review_gate"):
+                    st.state.get("stages", {}).pop(f"{phase}:{s}", None)
+                st.save()
+            pv.log("records_imported", phase=phase, file=file_path.name, sha256=digest,
+                   format=parsed["format"], source=source, query=query, searched_on=searched_on,
+                   n_records=len(rows), n_new_to_screen=n_new, n_duplicates=len(rows) - n_new,
+                   interface="desktop")
+            ctx.log(f"Done: {len(rows)} imported, {n_new} new record(s) to screen, "
+                    f"{len(rows) - n_new} already in the review or repeated in the file.")
+            return {"n_records": len(rows), "n_new": n_new, "n_duplicates": len(rows) - n_new}
+
+        return self.jobs.start(f"Phase {phase}: import {file_path.name}", task, run_id)
+
+    @staticmethod
+    def _rescue_decisions(pdir: Path, old_sheet: pd.DataFrame) -> int:
+        """dedup.py keeps the best copy of a duplicated record (DOI first, then
+        abstract), so an imported copy can replace an earlier one as the row on
+        the sheet. A decision made on the earlier copy belongs to the same paper:
+        move it to the row that replaced it instead of losing it."""
+        if old_sheet.empty or "ta_decision" not in old_sheet.columns:
+            return 0
+        sheet_path = pdir / "screening.csv"
+        sheet = tui._read_csv_safe(sheet_path)
+        dedup = tui._read_csv_safe(pdir / "candidates_dedup.csv")
+        if sheet.empty or dedup.empty or "duplicate_of" not in dedup.columns:
+            return 0
+        now_on_sheet = set(sheet["id"].map(tui._id_to_str))
+        replaced_by = {tui._id_to_str(r["id"]): tui._id_to_str(r["duplicate_of"])
+                       for _, r in dedup.iterrows() if pd.notna(r["duplicate_of"])}
+        cols = [c for c in ("ta_decision", "ta_reason", "ft_decision", "ft_reason", "reviewer")
+                if c in old_sheet.columns and c in sheet.columns]
+        for col in cols:
+            sheet[col] = sheet[col].astype(object)
+        moved = 0
+        for _, old in old_sheet.iterrows():
+            rid = tui._id_to_str(old["id"])
+            if rid in now_on_sheet or _blank_mask(pd.Series([old.get("ta_decision")])).iloc[0]:
+                continue
+            target = sheet.index[sheet["id"].map(tui._id_to_str) == replaced_by.get(rid, "")]
+            if len(target) and _blank_mask(sheet.loc[[target[0]], "ta_decision"]).iloc[0]:
+                for col in cols:
+                    sheet.at[target[0], col] = tui._disp(old.get(col, ""))
+                moved += 1
+        if moved:
+            sheet.to_csv(sheet_path, index=False, encoding="utf-8")
+        return moved
+
+    # --- reading aids for screening: highlighted words, one-click reasons ---
+    def _aids(self, state, cfg) -> dict:
+        saved = state.state.get("screening_aids", {})
+        queries = [cfg.search_query()] + [state.state.get(f"phase_{p}_query", "")
+                                          for p in range(1, cfg.n_phases + 1)]
+        terms, seen = [], set()
+        for q in queries:
+            for phrase, word in re.findall(r'"([^"]+)"|([^\s()"]+)', q or ""):
+                term = (phrase or word).strip()
+                if term and term.upper() not in ("AND", "OR", "NOT") and term.lower() not in seen:
+                    seen.add(term.lower())
+                    terms.append(term)
+        return {"keywords": terms, "use_keywords": bool(saved.get("use_keywords", True)),
+                "include": list(saved.get("include", [])), "exclude": list(saved.get("exclude", [])),
+                "reasons": list(saved.get("reasons", DEFAULT_REASONS))}
+
+    def set_screening_aids(self, run_id: str, aids: dict) -> dict:
+        """Words to highlight while reading and the list of one-click exclusion
+        reasons. These help the reviewer read; they are not part of the protocol
+        and change no decision, but the change is logged."""
+        state, cfg, prov = self._load(run_id)
+
+        def words(key, limit):
+            raw = aids.get(key) or []
+            if isinstance(raw, str):
+                raw = re.split(r"[,\n]", raw)
+            out, seen = [], set()
+            for w in raw:
+                w = re.sub(r"\s+", " ", str(w)).strip()[:80]
+                if w and w.lower() not in seen:
+                    seen.add(w.lower())
+                    out.append(w)
+            return out[:limit]
+
+        saved = {"use_keywords": bool(aids.get("use_keywords", True)),
+                 "include": words("include", 40), "exclude": words("exclude", 40),
+                 "reasons": words("reasons", 9)}
+        state.state["screening_aids"] = saved
+        state.save()
+        prov.log("screening_aids_edited", n_include_words=len(saved["include"]),
+                 n_exclude_words=len(saved["exclude"]), reasons=saved["reasons"], interface="desktop")
+        return self._aids(state, cfg)
+
+    # --- undo ----------------------------------------------------------------
+    def restore_decision(self, run_id: str, sheet: str, phase: int, rid: str,
+                         decision: str = "", reason: str = "", reviewer: str = "") -> dict:
+        """Undo: put one record back exactly as it was before the reviewer's last
+        decision, including back to 'no decision'. The undo is itself written to
+        decisions.jsonl, so the audit trail shows both the slip and the correction."""
+        self._guard_idle()
+        decision = (decision or "").strip().lower()
+        allowed = ("include", "exclude", "") if sheet == "ft" else ("include", "exclude", "maybe", "")
+        if sheet not in ("ta", "snowball", "ft") or decision not in allowed:
+            raise ServiceError("That decision cannot be restored.")
+        state, cfg, prov = self._load(run_id)
+        phase = int(phase or 0)
+        if sheet == "ta":
+            path, col = state.run_dir / f"phase_{phase}" / "screening.csv", "ta"
+            df = tui._read_csv_safe(path)
+        elif sheet == "snowball":
+            path, col = state.run_dir / "snowball" / "screening.csv", "ta"
+            df = tui._read_csv_safe(path)
+        else:
+            path, col = state.run_dir / "included_final.csv", "ft"
+            df = self._merged(state, cfg)
+        if df.empty or "id" not in df.columns:
+            raise ServiceError("There is no sheet to undo on.")
+        columns = [f"{col}_decision", f"{col}_reason"] + (["reviewer"] if sheet != "ft" else [])
+        for c in columns:
+            df[c] = df[c].astype(object) if c in df.columns else ""
+        matches = df.index[df["id"].map(tui._id_to_str) == str(rid)]
+        if len(matches) == 0:
+            raise ServiceError(f"No record with id {rid} on this sheet.")
+        idx = matches[0]
+        df.at[idx, f"{col}_decision"] = decision
+        df.at[idx, f"{col}_reason"] = (reason or "").strip()
+        if sheet != "ft":
+            df.at[idx, "reviewer"] = (reviewer or "").strip()
+        df.to_csv(path, index=False, encoding="utf-8")
+        row = df.loc[idx]
+        state.record_decision(
+            record_key=record_key(row.get("doi", ""), row.get("title", "")),
+            id=f"sb_{rid}" if sheet == "snowball" else tui._native(row.get("id")),
+            decision=decision, stage=col, phase=phase if sheet == "ta" else 0,
+            reason=(reason or "").strip(), source="human-review/undo",
+            title=row.get("title", ""), doi=row.get("doi", ""))
+        if sheet == "ft" and not decision and state.is_stage_done(1, "full_text_screening"):
+            # a study is undecided again, so full-text screening is no longer complete
+            state.state.get("stages", {}).pop("1:full_text_screening", None)
+            state.save()
+            prov.log("full_text_screening_reopened", reason="decision undone", id=str(rid))
+        return {"id": str(rid), "decision": decision,
+                "remaining": int(_blank_mask(df[f"{col}_decision"]).sum())}
+
     # --- title/abstract screening ------------------------------------------
     def get_screening(self, run_id: str, phase: int) -> dict:
         state, cfg, _ = self._load(run_id)
@@ -692,7 +986,8 @@ class ReviewService:
         path = state.run_dir / f"phase_{phase}" / "screening.csv"
         df = tui._read_csv_safe(path)
         if df.empty:
-            return {"rows": [], "criteria": self._criteria(cfg), "reviewer": cfg.reviewer}
+            return {"rows": [], "criteria": self._criteria(cfg), "reviewer": cfg.reviewer,
+                    "aids": self._aids(state, cfg)}
         dedup = tui._read_csv_safe(state.run_dir / f"phase_{phase}" / "candidates_dedup.csv")
         extra = {}
         if not dedup.empty and "id" in dedup.columns:
@@ -715,7 +1010,7 @@ class ReviewService:
             r["earlier_decision"] = earlier.get(rk, "")
             r["ta_decision"] = str(r.get("ta_decision", "")).strip().lower()
         return {"rows": rows, "criteria": self._criteria(cfg), "reviewer": cfg.reviewer,
-                "topic": cfg.topic}
+                "topic": cfg.topic, "aids": self._aids(state, cfg)}
 
     @staticmethod
     def _criteria(cfg) -> dict:
@@ -1026,7 +1321,7 @@ class ReviewService:
         state, cfg, _ = self._load(run_id)
         merged = self._merged(state, cfg)
         if merged.empty:
-            return {"rows": [], "criteria": self._criteria(cfg)}
+            return {"rows": [], "criteria": self._criteria(cfg), "aids": self._aids(state, cfg)}
         cols = ["id", "title", "authors", "year", "venue", "doi", "url", "abstract",
                 "ta_decision", "ft_decision", "ft_reason", "phase"]
         rows = _rows(merged, [c for c in cols if c in merged.columns])
@@ -1036,7 +1331,7 @@ class ReviewService:
             r["ft_decision"] = str(r.get("ft_decision", "")).strip().lower()
             pdf = pdf_dir / f"{r['id']}.pdf"
             r["pdf"] = str(pdf) if pdf.exists() else ""
-        return {"rows": rows, "criteria": self._criteria(cfg),
+        return {"rows": rows, "criteria": self._criteria(cfg), "aids": self._aids(state, cfg),
                 "done": state.is_stage_done(1, "full_text_screening")}
 
     def set_ft_decision(self, run_id: str, rid: str, decision: str, reason: str = "") -> dict:
@@ -1299,7 +1594,8 @@ class ReviewService:
             r["id"] = tui._id_to_str(r["id"])
             r["ta_decision"] = str(r.get("ta_decision", "")).strip().lower()
             r["earlier_decision"] = ""
-        return {"rows": rows, "criteria": self._criteria(cfg), "reviewer": cfg.reviewer, "topic": cfg.topic}
+        return {"rows": rows, "criteria": self._criteria(cfg), "reviewer": cfg.reviewer,
+                "topic": cfg.topic, "aids": self._aids(state, cfg)}
 
     def set_snowball_decision(self, run_id: str, rid: str, decision: str, reason: str = "") -> dict:
         self._guard_idle()

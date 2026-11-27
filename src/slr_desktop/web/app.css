@@ -258,7 +258,22 @@ button.pstep:hover { background: var(--surface-2); }
 .rec-body h2 { font: 600 20px/1.32 var(--read); letter-spacing: -.005em; max-width: 34em; }
 .rec-abstract { margin-top: 16px; font: 15.5px/1.68 var(--read); max-width: 68ch; white-space: pre-wrap; }
 .rec-actions { border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--surface); }
-.rec-actions input[type=text] { flex: 1 1 120px; min-width: 120px; }
+.rec-actions input[type=text] { flex: 1 1 90px; min-width: 90px; }
+.rec-actions .btn.ghost.sm { padding: 3px 6px; }
+/* quick exclusion reasons: one press of the number excludes with that reason */
+.rec-reasons { border-top: 1px solid var(--border); padding: 9px 16px 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.rec-reasons + .rec-actions { border-top: 0; padding-top: 9px; }
+button.chip.reason { border-color: var(--border); font-size: 12px; padding: 1px 7px; }
+button.chip.reason:hover { border-color: var(--exc); color: var(--exc); }
+button.chip.reason.on { background: var(--exc); border-color: var(--exc); color: var(--surface); }
+button.chip.reason kbd { margin-right: 1px; }
+/* words marked in a record: told apart by the line under them as well as by colour */
+mark.hl { color: inherit; padding: 0 1px; border-radius: 2px; background: var(--accent-soft); box-shadow: inset 0 -1px 0 var(--accent); }
+mark.hl.inc { background: var(--inc-soft); box-shadow: inset 0 -2px 0 var(--inc); }
+mark.hl.exc { background: var(--exc-soft); text-decoration: underline wavy var(--exc); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.help.plain { margin-left: 0; cursor: pointer; }
+.import-sample { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
+.import-sample li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .criteria { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 12px; font-size: 13px; max-width: 68ch; }
 .criteria summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .criteria div { white-space: pre-wrap; margin-top: 6px; }

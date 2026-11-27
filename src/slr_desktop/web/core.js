@@ -257,8 +257,12 @@ document.addEventListener("keydown", (e) => {
   if (!S.keyHandler || $("#modal-root").firstChild) return;
   const t = e.target;
   const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-  S.keyHandler(e, typing);
+  // with a modifier only undo (Ctrl+Z, Cmd+Z) is passed on; in a text box it stays the box's own undo
+  if (e.ctrlKey || e.metaKey || e.altKey) {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "z") S.keyHandler(e, typing, true);
+    return;
+  }
+  S.keyHandler(e, typing, false);
 });
 
 /* ---- background tasks ---- */

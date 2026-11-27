@@ -2,17 +2,88 @@
    screening, and the extraction sheet. */
 "use strict";
 
-const wsState = {};      // per-sheet: selected record, filter, search text
+const wsState = {};      // per-sheet: selected record, filter, search text, undo stack
 const assistState = {};  // per run+phase: skipped ids, running totals, current batch
 
+/* ---- highlighted words ----
+   Three groups, marked differently by more than colour: the review's own search
+   keywords, words the reviewer says point to "include", and words that point to
+   "exclude". In a term, * stands for any ending, and a plain word also matches
+   its plural. Text is split into nodes; nothing is ever written as HTML. */
+function termPattern(term) {
+  const parts = String(term).trim().replace(/^"|"$/g, "").split("*")
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"));
+  if (!parts.join("")) return null;
+  const body = parts.join("[\\p{L}\\p{N}]*") + (term.includes("*") ? "" : "(?:s|es)?");
+  return "(?<![\\p{L}\\p{N}])" + body + "(?![\\p{L}\\p{N}])";
+}
+function highlighter(aids) {
+  const groups = [];
+  if (aids) {
+    for (const [cls, terms] of [["exc", aids.exclude], ["inc", aids.include], ["key", aids.use_keywords ? aids.keywords : []]]) {
+      const patterns = (terms || []).map(termPattern).filter(Boolean);
+      // an engine without lookbehind (old WebKit) throws here: then that group is simply not marked
+      try { if (patterns.length) groups.push([cls, new RegExp(patterns.join("|"), "giu")]); } catch (e) { /* no highlight */ }
+    }
+  }
+  return (text) => {
+    text = String(text || "");
+    if (!groups.length || !text) return text;
+    const taken = [];
+    // groups are in priority order: where two overlap, the earlier one keeps the words
+    for (const [cls, re] of groups) {
+      re.lastIndex = 0;
+      for (let m = re.exec(text); m; m = re.exec(text)) {
+        if (!m[0]) { re.lastIndex++; continue; }
+        const a = m.index, b = a + m[0].length;
+        if (!taken.some(([s, e]) => a < e && b > s)) taken.push([a, b, cls]);
+      }
+    }
+    if (!taken.length) return text;
+    taken.sort((x, y) => x[0] - y[0]);
+    const nodes = [];
+    let pos = 0;
+    for (const [a, b, cls] of taken) {
+      if (a > pos) nodes.push(text.slice(pos, a));
+      nodes.push(h("mark.hl." + cls, text.slice(a, b)));
+      pos = b;
+    }
+    if (pos < text.length) nodes.push(text.slice(pos));
+    return nodes;
+  };
+}
+/* Highlighted words and the one-click reason list, edited in one place. */
+function editAids(aids) {
+  const v = { use_keywords: aids.use_keywords, include: aids.include.join(", "), exclude: aids.exclude.join(", "), reasons: aids.reasons.join("\n") };
+  const area = (key, rows, placeholder) => h("textarea", { rows, placeholder, value: v[key], oninput: (e) => { v[key] = e.target.value; } });
+  modal({ title: "Highlighted words and quick reasons",
+    sub: "Reading aids for this review. They change how records look and how fast you can record a reason, never a decision.",
+    body: h("div.stack",
+      h("label.check", h("input", { type: "checkbox", checked: v.use_keywords, onchange: (e) => { v.use_keywords = e.target.checked; } }),
+        h("span", "Mark my search keywords ", h("mark.hl.key", aids.keywords.slice(0, 3).join(", ") || "none set"))),
+      field(h("span", "Words that suggest ", h("mark.hl.inc", "include")), area("include", 2, "randomized, cohort, empirical, evaluat*"), "Separate with commas. Use * for any ending."),
+      field(h("span", "Words that suggest ", h("mark.hl.exc", "exclude")), area("exclude", 2, "editorial, protocol, animal, survey of"), "Separate with commas. Use * for any ending."),
+      field("Quick exclusion reasons", area("reasons", 8, "One reason per line"), "One per line, up to 9. Press the number shown on a reason to exclude with it in one key.")),
+    actions: [{ label: "Cancel" }, { label: "Save", primary: true, onclick: async () => {
+      const out = await tryCall("set_screening_aids", S.run.run_id, { use_keywords: v.use_keywords, include: v.include, exclude: v.exclude, reasons: v.reasons.split("\n") });
+      if (!out) return false;
+      toast("Saved."); render();
+    } }] });
+}
+
 /* A two-pane review workspace: record list on the left, one record on the right.
-   opts: { key, rows, decisionOf(r), options: [[decision, label, cls, key]], reasonRequired: [..],
-           decide(r, decision, reason) -> Promise, meta(r) -> nodes, criteria, emptyText } */
+   opts: { key, rows, decisionOf(r), reasonOf(r), options: [[decision, label, cls, key]], reasonRequired: [..],
+           decide(r, decision, reason) -> Promise, restore(r, before) -> Promise, aids,
+           meta(r) -> nodes, criteria, emptyText } */
 function reviewWorkspace(host, opts) {
-  const st = wsState[opts.key] || (wsState[opts.key] = { sel: null, filter: "undecided", q: "" });
+  const st = wsState[opts.key] || (wsState[opts.key] = { sel: null, filter: "undecided", q: "", undo: [] });
   const rows = opts.rows;
   if (!rows.length) { host.append(h("div.card.empty", h("h2", "Nothing here yet"), h("p", opts.emptyText || ""))); return; }
   if (st.filter === "undecided" && !rows.some((r) => !opts.decisionOf(r))) st.filter = "all";
+  const aids = opts.aids || { keywords: [], include: [], exclude: [], reasons: [], use_keywords: false };
+  const mark = highlighter(aids);
+  const reasons = aids.reasons.slice(0, 9);
+  const canExclude = opts.options.some((o) => o[0] === "exclude");
 
   const visible = () => rows.filter((r) => {
     const d = opts.decisionOf(r);
@@ -31,18 +102,39 @@ function reviewWorkspace(host, opts) {
     const next = list[Math.min(Math.max(i + step, 0), list.length - 1)];
     if (next) { st.sel = next.id; draw(); }
   };
-  const decide = async (decision) => {
+  let busy = false;   // one save at a time, so a held key cannot decide two records
+  const decide = async (decision, quickReason) => {
     const r = current();
-    if (!r) return;
-    const reason = reasonInput.value.trim();
+    if (!r || busy) return;
+    const reason = quickReason !== undefined ? quickReason : reasonInput.value.trim();
     if ((opts.reasonRequired || []).includes(decision) && !reason) {
-      reasonInput.focus(); toast("Type a reason for this exclusion first (PRISMA item 16b).", true); return;
+      reasonInput.focus(); toast("Give a reason for this exclusion first: type one, or pick a quick reason (PRISMA item 16b).", true); return;
     }
     const list = visible(), i = list.findIndex((x) => x.id === r.id);
     const after = list[i + 1] || list[i - 1];
-    try { await opts.decide(r, decision, reason); } catch (e) { toast(e.message, true); return; }
+    const before = { id: r.id, decision: opts.decisionOf(r) || "", reason: opts.reasonOf(r) || "", reviewer: r.reviewer || "" };
+    busy = true;
+    try { await opts.decide(r, decision, reason); } catch (e) { toast(e.message, true); return; } finally { busy = false; }
+    st.undo.push(before);
+    if (st.undo.length > 100) st.undo.shift();
     if (st.filter !== "all" && after) st.sel = after.id;
     else if (st.filter === "all" && list[i + 1]) st.sel = list[i + 1].id;
+    draw();
+    if (opts.afterDecide) opts.afterDecide();
+  };
+  const undo = async () => {
+    if (busy) return;
+    const before = st.undo[st.undo.length - 1];
+    if (!before) { toast("Nothing to undo."); return; }
+    const r = rows.find((x) => x.id === before.id);
+    if (!r) { st.undo.pop(); return; }
+    busy = true;
+    try { await opts.restore(r, before); } catch (e) { toast(e.message, true); return; } finally { busy = false; }
+    st.undo.pop();
+    st.sel = r.id;
+    if (!visible().some((x) => x.id === r.id)) st.filter = before.decision ? "all" : "undecided";
+    if (!visible().some((x) => x.id === r.id)) { st.filter = "all"; st.q = ""; }
+    toast("Undone: #" + r.id + (before.decision ? " is back to " + before.decision + "." : " has no decision again."));
     draw();
     if (opts.afterDecide) opts.afterDecide();
   };
@@ -63,6 +155,7 @@ function reviewWorkspace(host, opts) {
         h("span.dot" + (d ? "." + d : ""), { title: d || "undecided" }),
         h("span.grow", h("span.ti", r.title || "(no title)"), h("span.small.faint", "#" + r.id + (r.year !== "" ? " · " + fmt.year(r.year) : "")))));
     }
+    if (list.length > 600) items.append(h("div.empty.small", "Showing the first 600 of " + list.length + ". Type in the filter box to narrow the list."));
     if (!list.length) items.append(h("div.empty.small", st.filter === "undecided" ? "Every record has a decision." : "No records match."));
     const search = h("input", { type: "text", placeholder: "Filter by title, abstract or id", value: st.q, "aria-label": "Filter records",
       oninput: (e) => { st.q = e.target.value; const pos = e.target.selectionStart; draw(); const s = wrap.querySelector(".rec-list-head input"); s.focus(); s.setSelectionRange(pos, pos); } });
@@ -76,43 +169,57 @@ function reviewWorkspace(host, opts) {
     const r = current();
     let right;
     if (!r) {
-      right = h("div.rec-detail", h("div.rec-body.empty", h("h2", "All done here"), h("p", opts.doneText || "Every record in this view has a decision.")));
+      right = h("div.rec-detail", h("div.rec-body.empty", h("h2", "All done here"), h("p", opts.doneText || "Every record in this view has a decision."),
+        st.undo.length ? h("p", { style: "margin-top:14px" }, h("button.btn", { onclick: undo }, "Undo last decision", h("kbd", "U"))) : null));
     } else {
-      const d = opts.decisionOf(r);
-      reasonInput.value = opts.reasonOf(r) || "";
+      const d = opts.decisionOf(r), reasonNow = opts.reasonOf(r) || "";
+      reasonInput.value = reasonNow;
       const crit = opts.criteria && (opts.criteria.inclusion || opts.criteria.exclusion)
         ? h("details.criteria", h("summary", "Eligibility criteria"),
             opts.criteria.inclusion ? h("div", h("strong", "Include if all: "), opts.criteria.inclusion) : null,
             opts.criteria.exclusion ? h("div", h("strong", "Exclude if any: "), opts.criteria.exclusion) : null) : null;
+      const anyMarks = (aids.use_keywords && aids.keywords.length) || aids.include.length || aids.exclude.length;
       right = h("div.rec-detail",
         h("div.rec-body",
           h("div.row.wrap.small.muted", { style: "margin-bottom:8px" }, h("span.num", "#" + r.id), tag(d),
             r.earlier_decision ? h("span.badge.acc", { title: "The same record was judged in another phase" }, "earlier phase: " + r.earlier_decision) : null,
-            opts.byline ? opts.byline(r) : null),
-          h("h2", r.title || "(no title)"),
+            opts.byline ? opts.byline(r) : null,
+            h("span.grow"),
+            h("button.btn.ghost.sm", { onclick: () => move(-1), title: "Previous record" }, "Previous", h("kbd", "K")),
+            h("button.btn.ghost.sm", { onclick: () => move(1), title: "Next record" }, "Next", h("kbd", "J"))),
+          h("h2", r.title ? mark(r.title) : "(no title)"),
           h("div.muted", { style: "margin-top:6px" }, [r.authors, fmt.year(r.year), r.venue].filter(Boolean).join(" · ")),
           h("div.row.wrap.small", { style: "margin-top:8px" },
             r.doi ? h("a", { onclick: () => tryCall("open_url", "https://doi.org/" + r.doi) }, "doi:" + r.doi) : null,
             r.url && String(r.url).startsWith("http") ? h("a", { onclick: () => tryCall("open_url", r.url) }, "Open record") : null,
             opts.meta ? opts.meta(r) : null),
-          h("div.rec-abstract", r.abstract || h("span.faint", "No abstract available for this record.")),
+          h("div.rec-abstract", r.abstract ? mark(r.abstract) : h("span.faint", "No abstract available for this record.")),
           crit),
+        canExclude && opts.aids ? h("div.rec-reasons", { role: "group", "aria-label": "Exclude with a reason" },
+          h("span.small.muted", "Exclude:"),
+          reasons.map((text, i) => h("button.chip.reason" + (d === "exclude" && reasonNow === text ? ".on" : ""),
+            { onclick: () => decide("exclude", text), title: "Exclude with this reason (key " + (i + 1) + ")" }, h("kbd", String(i + 1)), text)),
+          h("button.help.plain", { type: "button", onclick: () => editAids(aids) }, reasons.length ? "Edit list" : "Add quick reasons")) : null,
         h("div.rec-actions", reasonInput,
           opts.options.map(([dec, label, cls, key]) => h("button.btn." + cls + (d === dec ? ".on" : ""), { onclick: () => decide(dec) }, label, h("kbd", key))),
           h("span.grow"),
-          h("button.btn.ghost.sm", { onclick: () => move(-1), title: "Previous record" }, "Previous", h("kbd", "K")),
-          h("button.btn.ghost.sm", { onclick: () => move(1), title: "Next record" }, "Next", h("kbd", "J"))));
+          opts.aids ? h("button.help.plain", { type: "button", onclick: () => editAids(aids), title: "Choose the words that are marked in the text" },
+            anyMarks ? "Highlighted words" : "Highlight words") : null,
+          opts.restore ? h("button.btn.ghost.sm", { disabled: !st.undo.length, onclick: undo, title: "Take back your last decision (U or Ctrl+Z)" }, "Undo", h("kbd", "U")) : null));
     }
     clear(wrap).append(left, right);
     const selEl = wrap.querySelector(".rec-item.sel");
     if (selEl) selEl.scrollIntoView({ block: "nearest" });
   }
   draw();
-  setKeys((e, typing) => {
-    if (typing) { if (e.key === "Escape") e.target.blur(); return; }
+  setKeys((e, typing, withCtrl) => {
     const k = e.key.toLowerCase();
+    if (withCtrl) { if (k === "z" && !typing && opts.restore) { e.preventDefault(); undo(); } return; }
+    if (typing) { if (e.key === "Escape") e.target.blur(); return; }
     const opt = opts.options.find((o) => o[3].toLowerCase() === k);
     if (opt) { e.preventDefault(); decide(opt[0]); }
+    else if (canExclude && opts.aids && /^[1-9]$/.test(e.key) && reasons[Number(e.key) - 1]) { e.preventDefault(); decide("exclude", reasons[Number(e.key) - 1]); }
+    else if (k === "u" && opts.restore) { e.preventDefault(); undo(); }
     else if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); move(1); }
     else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); move(-1); }
     else if (k === "r") { e.preventDefault(); reasonInput.focus(); }
@@ -132,9 +239,10 @@ S.views["run:screening"] = async (el) => {
   if (p === "snowball") {
     const data = await call("get_snowball_screening", run.run_id);
     el.append(h("p.small.muted", { style: "margin-bottom:10px" }, "Candidates found by citation snowballing. When you are done, use “Merge snowball results” under Outputs."));
-    reviewWorkspace(el, { key: run.run_id + ":sb", rows: data.rows, criteria: data.criteria, options: TA_OPTIONS,
+    reviewWorkspace(el, { key: run.run_id + ":sb", rows: data.rows, criteria: data.criteria, aids: data.aids, options: TA_OPTIONS,
       decisionOf: (r) => r.ta_decision, reasonOf: (r) => r.ta_reason,
-      decide: async (r, d, reason) => { await call("set_snowball_decision", run.run_id, r.id, d, reason); r.ta_decision = d; r.ta_reason = reason; } });
+      decide: async (r, d, reason) => { await call("set_snowball_decision", run.run_id, r.id, d, reason); r.ta_decision = d; r.ta_reason = reason; r.reviewer = data.reviewer || "human-review"; },
+      restore: async (r, b) => { await call("restore_decision", run.run_id, "snowball", 0, r.id, b.decision, b.reason, b.reviewer); r.ta_decision = b.decision; r.ta_reason = b.reason; r.reviewer = b.reviewer; } });
     return;
   }
   if (!p.unlocked) { el.append(lockedNote(p)); return; }
@@ -153,7 +261,8 @@ S.views["run:screening"] = async (el) => {
 
   if (as.mode === "assist") { await assistPanel(el, run, p, as); return; }
   const data = await call("get_screening", run.run_id, p.phase);
-  reviewWorkspace(el, { key: akey, rows: data.rows, criteria: data.criteria, options: TA_OPTIONS,
+  reviewWorkspace(el, { key: akey, rows: data.rows, criteria: data.criteria, aids: data.aids, options: TA_OPTIONS,
+    restore: async (r, b) => { await call("restore_decision", run.run_id, "ta", p.phase, r.id, b.decision, b.reason, b.reviewer); r.ta_decision = b.decision; r.ta_reason = b.reason; r.reviewer = b.reviewer; },
     decisionOf: (r) => r.ta_decision, reasonOf: (r) => r.ta_reason,
     byline: (r) => (r.reviewer ? h("span", String(r.reviewer) === "ai-assisted" ? "AI suggested" : "by " + r.reviewer) : null),
     doneText: "Every record in this phase has a decision. Continue to the review gate.",
@@ -235,7 +344,12 @@ S.views["run:fulltext"] = async (el) => {
     data.rows.filter((r) => r.ft_decision === "include").length + " study/studies included."),
     h("button.btn.sm", { onclick: () => go(runPath(run.run_id, "extraction")) }, "Go to extraction")));
   reviewWorkspace(el, {
-    key: run.run_id + ":ft", rows: data.rows, criteria: data.criteria,
+    key: run.run_id + ":ft", rows: data.rows, criteria: data.criteria, aids: data.aids,
+    restore: async (r, b) => {
+      await call("restore_decision", run.run_id, "ft", 0, r.id, b.decision, b.reason, "");
+      r.ft_decision = b.decision; r.ft_reason = b.reason;
+      if (data.done && !b.decision) render();   // screening is no longer complete: redraw the page banner
+    },
     options: [["include", "Include", "inc", "I"], ["exclude", "Exclude", "exc", "E"]], reasonRequired: ["exclude"],
     decisionOf: (r) => r.ft_decision, reasonOf: (r) => r.ft_reason,
     emptyText: "No study has passed title/abstract screening yet.",

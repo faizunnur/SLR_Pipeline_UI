@@ -6,6 +6,41 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Import records from a file.** The Search page has "Import from a file" for
+  results exported from a database website: RIS (Scopus, Web of Science, IEEE
+  Xplore, EndNote, Zotero), BibTeX, CSV (Scopus and IEEE Xplore layouts) and
+  PubMed's `.nbib`. This is the way in for databases that give no API key to an
+  individual researcher. The app previews the file first (records, how many
+  have an abstract, a DOI, a year), asks which database it came from, the date
+  and the search string used there, then adds the records to the phase. They
+  are de-duplicated against what is already there, counted in the PRISMA flow,
+  listed in the per-source search record, and written to the audit trail. A
+  review can start from an import alone, with no API search.
+- **Highlighted words while screening.** The review's search keywords are marked
+  in each title and abstract, and you can add your own words that point to
+  include or to exclude. Each group is marked differently by line style as well
+  as colour. `*` in a word matches any ending.
+- **One-key exclusion reasons.** A row of reasons under each record; press its
+  number (`1` to `9`) or click it to exclude with that reason and move on. Each
+  review has its own list, editable from the same row.
+- **Undo.** `U` or `Ctrl+Z` (also a button) takes back your last decision at
+  title/abstract, snowball and full-text screening, including back to "no
+  decision". Up to 100 steps. The undo is written to `decisions.jsonl` like any
+  other decision, so the audit trail shows the slip and the correction.
+
+### Changed
+
+- Importing never loses a decision. Record ids already in a phase do not change,
+  the same file cannot be imported twice into a phase, and when an imported copy
+  of a paper replaces an earlier copy on the screening sheet (it has a DOI or an
+  abstract the earlier one lacked) the decision moves with it.
+- Re-running a search keeps the records that were imported from files.
+- New undecided records from an import re-open that phase's review gate.
+- Previous and Next moved to the top of the open record, to give the decision
+  row room.
+
 ## [1.0.2] - 2026-11-27
 
 ### Added
