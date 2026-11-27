@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Links in the README to the licence files, `NOTICE` and the guides in `docs/`
+  now work on the PyPI page too (they pointed to pages that exist only on
+  GitHub).
+
 ## [1.2.2] - 2026-11-27
 
 ### Fixed

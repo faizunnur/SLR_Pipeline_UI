@@ -78,13 +78,13 @@ inclusion/exclusion criteria for your own topic; the method does not change.
 
 ## Documentation
 
-- [The desktop app](docs/desktop-app.md) - each screen, the keyboard shortcuts,
+- [The desktop app](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/docs/desktop-app.md) - each screen, the keyboard shortcuts,
   where your data lives, and how the app is put together.
-- [The 7-stage method](docs/methodology.md) - the methodology the pipeline
+- [The 7-stage method](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/docs/methodology.md) - the methodology the pipeline
   implements, stage by stage, with the integrity and end-to-end checklists.
-- [Script reference](docs/script-reference.md) - every stage script and the
+- [Script reference](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/docs/script-reference.md) - every stage script and the
   `src/srp/` library, command by command.
-- [AI-assist screening](docs/ai-assist.md) - where AI fits in the pipeline,
+- [AI-assist screening](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/docs/ai-assist.md) - where AI fits in the pipeline,
   the prompt packs it uses, and the guardrails around it.
 
 ## Updating
@@ -444,7 +444,7 @@ records it automatically.
 
 SLR Pipeline UI is designed and developed by **Md Faizun Nur Islam**. It is
 built on release 1.3.4 of slr-pipeline by Md Nayeem Hossain, used under the MIT
-and CC BY 4.0 licences. [`NOTICE`](NOTICE) lists which files come from it and
+and CC BY 4.0 licences. [`NOTICE`](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/NOTICE) lists which files come from it and
 which are new here.
 
 ## License
@@ -453,12 +453,12 @@ Licensing is split by content type, as in the original project:
 
 - **Code** (everything under `src/`: the desktop app in `src/slr_desktop/`, and
   `slr.py`, `src/srp/`, `src/scripts/` from slr-pipeline) is licensed under the
-  **MIT License** -- see [`LICENSE.txt`](LICENSE.txt).
+  **MIT License** -- see [`LICENSE.txt`](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/LICENSE.txt).
 - **Documentation** (this README, `docs/` and `examples/README.md`) is licensed
   under **Creative Commons Attribution 4.0 International (CC-BY-4.0)** -- see
-  [`LICENSE-docs`](LICENSE-docs). It is adapted from slr-pipeline's
+  [`LICENSE-docs`](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/LICENSE-docs). It is adapted from slr-pipeline's
   documentation; the changes are stated in that file.
 
 Copyright (c) 2026 Md Faizun Nur Islam (SLR Pipeline UI: the desktop app and the changes
 made in this repository). The original project's copyright notice is kept in
-[`LICENSE.txt`](LICENSE.txt), as the MIT License requires.
+[`LICENSE.txt`](https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/LICENSE.txt), as the MIT License requires.
