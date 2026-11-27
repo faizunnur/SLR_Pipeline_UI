@@ -283,6 +283,15 @@ class TestSafety:
         with pytest.raises(ServiceError, match="Unknown key"):
             svc.set_api_key("PATH", "x")
 
+    def test_every_api_key_says_where_to_get_it(self, svc):
+        for key in svc.api_keys()["keys"]:
+            info = key["help"]
+            assert info, f"{key['var']} has no instructions"
+            assert info["access"] in ("free", "institution")
+            assert isinstance(info["optional"], bool)
+            assert info["effect"] and info["steps"] and info["site"]
+            assert info["url"].startswith("https://")
+
     def test_delete_run_only_removes_a_review_folder(self, svc):
         run_id = svc.create_run(FORM)["run_id"]
         with pytest.raises(ServiceError, match="Not a review folder"):

@@ -59,6 +59,75 @@ ALL_SOURCES = list(tui._ALL_SOURCE_NAMES)
 KEYLESS_SOURCES = ["openalex", "semanticscholar", "crossref", "arxiv", "pubmed", "doaj"]
 KEYED_SOURCE_FIELD = dict(tui._KEYED_SOURCE_FIELD)
 MANAGED_API_KEYS = list(tui._MANAGED_API_KEYS)
+
+# Where each key comes from, shown next to the key on the API keys page.
+#   access:   "free" (anyone can sign up) or "institution" (needs a subscription)
+#   optional: True if the source still works without the key
+# Keep in step with the notes in .env.example.
+KEY_HELP = {
+    "S2_API_KEY": {
+        "access": "free", "optional": True,
+        "effect": "Semantic Scholar works without a key, on a slow pool shared by everyone. "
+                  "A key gives you your own limit of 1 request per second.",
+        "steps": ["Open the Semantic Scholar API page.",
+                  "Fill in the API key request form.",
+                  "The key is sent to you by email. Paste it here."],
+        "url": "https://www.semanticscholar.org/product/api", "site": "semanticscholar.org"},
+    "PUBMED_API_KEY": {
+        "access": "free", "optional": True,
+        "effect": "PubMed works without a key at 3 requests per second. A key raises that to 10.",
+        "steps": ["Sign in to your NCBI account (creating one is free).",
+                  "Open Account settings and find API Key Management.",
+                  "Create an API key, copy it and paste it here."],
+        "url": "https://www.ncbi.nlm.nih.gov/account/", "site": "ncbi.nlm.nih.gov"},
+    "CORE_API_KEY": {
+        "access": "free", "optional": False,
+        "effect": "Without a key CORE is skipped. With one, CORE is searched and is also "
+                  "used as an extra source of open-access PDFs.",
+        "steps": ["Open the CORE API page.",
+                  "Register for a free API key with your email address.",
+                  "The key is sent to you by email. Paste it here."],
+        "url": "https://core.ac.uk/services/api", "site": "core.ac.uk"},
+    "IEEE_API_KEY": {
+        "access": "institution", "optional": False,
+        "effect": "Without a key IEEE Xplore is skipped. Keys are normally given only to "
+                  "people whose institution subscribes to IEEE Xplore.",
+        "steps": ["Create an account on the IEEE developer portal.",
+                  "Register for a key for the Metadata Search API.",
+                  "Wait for IEEE to approve it, then copy the key from your account and paste it here."],
+        "url": "https://developer.ieee.org", "site": "developer.ieee.org"},
+    "SCOPUS_API_KEY": {
+        "access": "institution", "optional": False,
+        "effect": "Without a key Scopus is skipped. The key only works from your institution's "
+                  "network (on campus or through its VPN) unless you also have an institutional token.",
+        "steps": ["Sign in to the Elsevier developer portal with your institutional email.",
+                  "Create an API key (any label and website address will do).",
+                  "Copy the key and paste it here."],
+        "url": "https://dev.elsevier.com", "site": "dev.elsevier.com"},
+    "SCOPUS_INSTTOKEN": {
+        "access": "institution", "optional": True,
+        "effect": "Only needed to use your Scopus key away from campus. It cannot be created "
+                  "online: Elsevier issues it on request. Treat it like a password.",
+        "steps": ["Ask your librarian, or Elsevier support, for an institutional token for your Scopus API key.",
+                  "When you receive it, paste it here. Leave this empty if you work on campus."],
+        "url": "https://dev.elsevier.com", "site": "dev.elsevier.com"},
+    "SPRINGER_API_KEY": {
+        "access": "free", "optional": False,
+        "effect": "Without a key Springer Nature is skipped. The free plan allows 500 requests a day.",
+        "steps": ["Sign up on the Springer Nature developer portal.",
+                  "Choose the Meta API, not the Open Access API: Open Access misses every "
+                  "paywalled Springer paper.",
+                  "Copy the key from your account and paste it here."],
+        "url": "https://dev.springernature.com", "site": "dev.springernature.com"},
+    "WOS_API_KEY": {
+        "access": "institution", "optional": False,
+        "effect": "Without a key Web of Science is skipped. Keys are normally given only to "
+                  "people whose institution subscribes to Web of Science.",
+        "steps": ["Register on the Clarivate developer portal with your institutional email.",
+                  "Create an application and subscribe it to the Web of Science API Expanded.",
+                  "Wait for Clarivate to approve it, then copy the key and paste it here."],
+        "url": "https://developer.clarivate.com/apis/wos", "site": "developer.clarivate.com"},
+}
 EXTRACTION_FIELDS = list(tui._EXTRACTION_EDIT_FIELDS)
 EXTRACTION_ENUMS = dict(tui._EXTRACTION_ENUM_CHOICES)
 PHASE_STAGES = ("search", "dedup", "prescreen", "assist_ta", "review_gate", "snowball")
@@ -1502,7 +1571,8 @@ class ReviewService:
     def api_keys(self) -> dict:
         present = self._keys_present()
         return {"env_path": str(self.env_path),
-                "keys": [{"label": label, "var": var, "set": present[var]} for label, var in MANAGED_API_KEYS]}
+                "keys": [{"label": label, "var": var, "set": present[var], "help": KEY_HELP.get(var)}
+                         for label, var in MANAGED_API_KEYS]}
 
     def set_api_key(self, var: str, value: str) -> dict:
         if var not in {v for _, v in MANAGED_API_KEYS}:

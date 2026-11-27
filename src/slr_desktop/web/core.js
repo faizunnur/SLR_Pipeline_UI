@@ -147,6 +147,62 @@ function legacyCopy(text, done) {
 }
 function openPath(path) { return tryCall("open_path", path); }
 
+/* ---- help popover ----
+   A small panel that explains something next to its trigger. It opens when the
+   pointer rests on the trigger, when the trigger gets keyboard focus, and on
+   click (which also moves focus into it, so a link inside can be reached with
+   the keyboard). It stays open while the pointer is inside it. Esc closes it.
+   It is attached to <body> with fixed positioning so a scrolling table cannot
+   clip it. */
+let popEl = null, popFor = null, popTimer = null, popQuiet = false;
+function hidePop() {
+  clearTimeout(popTimer);
+  if (popEl) popEl.remove();
+  if (popFor) popFor.setAttribute("aria-expanded", "false");
+  popEl = popFor = null;
+}
+/* beside the trigger when there is room (so it never covers the row it explains), else under or over it */
+function placePop() {
+  const r = popFor.getBoundingClientRect(), p = popEl.getBoundingClientRect();
+  const W = window.innerWidth, H = window.innerHeight, clamp = (v, max) => Math.max(12, Math.min(v, max));
+  if (r.right + 12 + p.width <= W - 12) {
+    popEl.style.left = r.right + 12 + "px";
+    popEl.style.top = clamp(r.top - 14, H - p.height - 12) + "px";
+  } else {
+    popEl.style.left = clamp(r.left, W - p.width - 12) + "px";
+    popEl.style.top = (r.bottom + 6 + p.height <= H - 12 ? r.bottom + 6 : clamp(r.top - p.height - 6, H)) + "px";
+  }
+}
+function helpTip(label, build) {
+  const btn = h("button.help", { type: "button", "aria-expanded": "false" }, label);
+  const later = () => { clearTimeout(popTimer); popTimer = setTimeout(hidePop, 220); };
+  const show = () => {
+    clearTimeout(popTimer);
+    if (popFor === btn || popQuiet) return;
+    hidePop();
+    popEl = h("div.pop", { role: "dialog", "aria-label": label, tabindex: "-1",
+      onmouseenter: () => clearTimeout(popTimer), onmouseleave: later,
+      onfocusin: () => clearTimeout(popTimer), onfocusout: later }, build());
+    document.body.append(popEl);
+    popFor = btn; btn.setAttribute("aria-expanded", "true");
+    placePop();
+  };
+  btn.addEventListener("mouseenter", show);
+  btn.addEventListener("mouseleave", later);
+  btn.addEventListener("focus", show);
+  btn.addEventListener("blur", later);
+  btn.addEventListener("click", () => { show(); if (popEl) (popEl.querySelector("button, a") || popEl).focus(); });
+  return btn;
+}
+/* The page scrolled (for one, because Tab brought the trigger into view): follow
+   the trigger, or close once it has left the screen. */
+document.addEventListener("scroll", (e) => {
+  if (!popEl || popEl.contains(e.target)) return;
+  const r = popFor.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > window.innerHeight) hidePop(); else placePop();
+}, true);
+window.addEventListener("resize", hidePop);
+
 /* ---- router ---- */
 function go(path) { if (location.hash === "#" + path) render(); else location.hash = path; }
 function parseRoute() {
@@ -162,6 +218,7 @@ async function render() {
   const seq = ++renderSeq;
   S.route = parseRoute();
   setKeys(null);
+  hidePop();
   const view = $("#view");
   const scroll = view.scrollTop;
   const sameRoute = view.dataset.route === location.hash;
@@ -189,6 +246,13 @@ async function render() {
 /* per-view keyboard shortcuts; cleared on every render */
 function setKeys(handler) { S.keyHandler = handler; }
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && popEl) {
+    // give focus back to the trigger if it was inside the panel, without reopening it
+    const from = popFor, inside = popEl.contains(document.activeElement);
+    hidePop();
+    if (inside) { popQuiet = true; from.focus(); popQuiet = false; }
+    return;
+  }
   if (e.key === "Escape" && $("#modal-root").firstChild) { closeModal(); return; }
   if (!S.keyHandler || $("#modal-root").firstChild) return;
   const t = e.target;

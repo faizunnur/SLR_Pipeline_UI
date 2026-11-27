@@ -6,6 +6,13 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- API keys page: each key has a "How to get this key" link. Resting the pointer
+  on it (or focusing or clicking it) shows whether the key is free or needs an
+  institutional subscription, what the key changes, the steps to get it, and a
+  button that opens the provider's sign-up page.
+
 ### Changed
 
 - On macOS the desktop shortcut is now an app bundle in `~/Applications` and on

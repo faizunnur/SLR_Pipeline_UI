@@ -276,9 +276,18 @@ S.views.keys = async (el) => {
   const data = await call("api_keys");
   el.append(h("div.page-head", h("div.grow", h("h1", "API keys"),
     h("p.muted", "Every key is optional. A key raises a rate limit or unlocks a source. Keys are stored only in your workspace's .env file and are never written into a review folder, so a review stays safe to share."))));
+  const keyHelp = (k) => () => [
+    h("div.pop-head", h("strong", k.label),
+      h("span.badge" + (k.help.access === "free" ? ".inc" : ".may"), k.help.access === "free" ? "Free" : "Needs your institution"),
+      h("span.badge", k.help.optional ? "Optional" : "Unlocks the source")),
+    h("p", k.help.effect),
+    h("ol", k.help.steps.map((s) => h("li", s))),
+    h("button.btn.sm", { onclick: () => tryCall("open_url", k.help.url) }, "Open " + k.help.site),
+  ];
   const rows = data.keys.map((k) => {
     const input = h("input", { type: "password", placeholder: k.set ? "Replace key…" : "Paste key…", "aria-label": k.label + " key", autocomplete: "off" });
-    return h("tr", h("td", h("strong", k.label), h("div.mono.faint", k.var)),
+    return h("tr", h("td", h("strong", k.label),
+        h("div", h("span.mono.faint", k.var), k.help ? helpTip("How to get this key", keyHelp(k)) : null)),
       h("td", h("span.badge" + (k.set ? ".inc" : ""), k.set ? "Set" : "Not set")),
       h("td", h("div.row", input,
         h("button.btn.sm", { onclick: async () => { if (await tryCall("set_api_key", k.var, input.value)) { toast(k.label + " key saved."); render(); } } }, "Save"),
