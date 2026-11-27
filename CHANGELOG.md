@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-11-27
+
 ### Fixed
 
 - Links in the README to the licence files, `NOTICE` and the guides in `docs/`
