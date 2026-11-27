@@ -6,6 +6,16 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **A blank window on macOS.** The page's security policy refused the
+  `new Function()` that pywebview uses to build its Python bridge, so on WebKit
+  the bridge never reported ready and the window stayed empty. The policy now
+  allows it in the desktop window; browser mode sends a stricter header and
+  still refuses it.
+- If the window ever fails to connect to the app again, it says so after a few
+  seconds and gives the `slr-ui --browser` command, instead of staying blank.
+
 ## [1.2.1] - 2026-11-27
 
 ### Changed

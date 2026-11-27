@@ -17,6 +17,20 @@ async function boot() {
   render();
 }
 
-if (window.pywebview) boot();
-else if (new URLSearchParams(location.search).has("t")) boot();          // browser mode
-else window.addEventListener("pywebviewready", boot, { once: true });    // desktop window
+/* The desktop window starts when pywebview says its bridge is ready. If that
+   never happens the page would stay blank with no hint, so after a wait it
+   says what to do instead. A late bridge still starts the app. */
+const BRIDGE_WAIT_MS = 12000;
+function bridgeMissing() {
+  clear($("#view")).append(h("div.view-inner", h("div.banner.bad", h("div",
+    h("strong", "The window could not connect to the app. "),
+    "Close it and start the app in your browser instead: open a terminal and run ",
+    h("span.mono", "slr-ui --browser"), ". Your reviews are not affected."))));
+}
+
+if (new URLSearchParams(location.search).has("t")) boot();               // browser mode
+else if (window.pywebview && window.pywebview.api && window.pywebview.api.app_info) boot();
+else {                                                                    // desktop window
+  const waiting = setTimeout(bridgeMissing, BRIDGE_WAIT_MS);
+  window.addEventListener("pywebviewready", () => { clearTimeout(waiting); boot(); }, { once: true });
+}

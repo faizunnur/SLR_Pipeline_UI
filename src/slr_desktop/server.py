@@ -25,6 +25,11 @@ from slr_desktop.api import Api
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_BODY = 8 * 1024 * 1024
 _TYPES = {".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml"}
+# The page's own <meta> policy has to allow 'unsafe-eval' for pywebview's bridge
+# in the desktop window. A browser needs no bridge, so browser mode adds this
+# stricter policy as a header; a browser enforces both, so eval stays refused.
+STRICT_CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self'; "
+              "script-src 'self'; connect-src 'self'")
 
 
 def make_server(api: Api, port: int = 0, token: str | None = None):
@@ -46,6 +51,7 @@ def make_server(api: Api, port: int = 0, token: str | None = None):
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Content-Security-Policy", STRICT_CSP)
             self.end_headers()
             self.wfile.write(body)
 

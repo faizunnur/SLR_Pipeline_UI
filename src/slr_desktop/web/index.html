@@ -3,8 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 'unsafe-eval' is here for the desktop window only: pywebview builds its
+       Python bridge with new Function(), and WebKit (macOS, Linux) refuses that
+       without it, which left the window blank. Scripts still load from the
+       app's own files only, and none of them calls eval. Browser mode sends a
+       stricter header without it (server.py). -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'">
+        content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' 'unsafe-eval'; connect-src 'self'">
   <title>SLR Pipeline UI</title>
   <link rel="stylesheet" href="app.css">
 </head>

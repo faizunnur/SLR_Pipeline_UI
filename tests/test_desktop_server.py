@@ -64,6 +64,38 @@ def test_serves_the_page_and_its_scripts(server):
         assert request(port, "GET", "/" + name)[0] == 200
 
 
+def _script_src(policy: str) -> list[str]:
+    for part in policy.split(";"):
+        words = part.split()
+        if words and words[0] == "script-src":
+            return words[1:]
+    return []
+
+
+def test_the_window_policy_lets_the_pywebview_bridge_be_built():
+    """pywebview creates its Python bridge with new Function(). WebKit (macOS,
+    Linux) refuses that under a policy without 'unsafe-eval': the bridge never
+    reports ready and the window stays blank. Inline and remote scripts must
+    stay refused."""
+    import re
+    html = (Path(__file__).resolve().parent.parent / "src" / "slr_desktop" / "web" / "index.html") \
+        .read_text(encoding="utf-8")
+    policy = re.search(r'http-equiv="Content-Security-Policy"\s+content="([^"]+)"', html).group(1)
+    assert sorted(_script_src(policy)) == ["'self'", "'unsafe-eval'"]
+
+
+def test_browser_mode_still_refuses_eval(server):
+    """A browser enforces the header and the page's own policy together, so the
+    stricter header wins there."""
+    port, _ = server
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    conn.request("GET", f"/index.html?t={TOKEN}")
+    resp = conn.getresponse()
+    resp.read()
+    conn.close()
+    assert _script_src(resp.getheader("Content-Security-Policy")) == ["'self'"]
+
+
 def test_api_call_with_token_works(server):
     port, _ = server
     status, out = api(port, "list_runs")

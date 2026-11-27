@@ -232,7 +232,10 @@ The provenance log, newest first.
   abstracts come from external APIs, so the page never writes them as HTML:
   every element is created through one helper that sets text only. A
   Content-Security-Policy allows scripts and styles from the app's own files
-  only.
+  only. The page's policy has to include `'unsafe-eval'`, because pywebview
+  builds its bridge with `new Function()` and WebKit (macOS, Linux) refuses
+  that otherwise; no script of the app calls `eval`, and browser mode sends a
+  stricter header without it.
 - **Bridge.** In the window, calls go through pywebview's in-process bridge. In
   browser mode the same calls go to a small local server (`server.py`).
 - **Service.** `service.py` has no UI code and returns plain dictionaries,
