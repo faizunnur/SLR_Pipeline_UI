@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-27
+
 ### Added
 
 - API keys page: each key has a "How to get this key" link. Resting the pointer
