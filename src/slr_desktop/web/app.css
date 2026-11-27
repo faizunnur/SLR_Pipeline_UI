@@ -274,6 +274,19 @@ mark.hl.exc { background: var(--exc-soft); text-decoration: underline wavy var(-
 .help.plain { margin-left: 0; cursor: pointer; }
 .import-sample { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
 .import-sample li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the one control to use next: a moving outline as well as the keyboard focus */
+.cue { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); animation: cue 1.5s ease-in-out infinite; }
+@keyframes cue { 50% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 8px var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { .cue, .dock-bar.indet > i, .spinner { animation: none; } .dock-bar.indet > i { width: 100%; opacity: .4; } }
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--r-sm); }
+ol.steps li { flex: 1 1 0; display: flex; gap: 10px; align-items: center; padding: 9px 12px; color: var(--muted); border-left: 1px solid var(--border); }
+ol.steps li:first-child { border-left: 0; }
+ol.steps li > span:last-child { display: flex; flex-direction: column; line-height: 1.3; }
+ol.steps .n { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 1.5px solid var(--border-strong); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+ol.steps li.now { color: var(--text); background: var(--accent-soft); }
+ol.steps li.now .n { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+ol.steps li.done .n { background: var(--inc); border-color: var(--inc); color: var(--surface); }
+.assist-hint { margin: 0; font-weight: 600; }
 .criteria { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 12px; font-size: 13px; max-width: 68ch; }
 .criteria summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .criteria div { white-space: pre-wrap; margin-top: 6px; }
@@ -282,6 +295,11 @@ mark.hl.exc { background: var(--exc-soft); text-decoration: underline wavy var(-
 .dock { border-top: 1px solid var(--border-strong); background: var(--surface); flex: none; }
 .dock-head { display: flex; align-items: center; gap: 10px; padding: 8px 16px; }
 .dock pre { margin: 0; padding: 10px 16px; max-height: 210px; overflow: auto; font: 12px/1.55 var(--mono); background: var(--surface-2); border-top: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; }
+.dock-bar { width: 130px; flex: none; }
+.dock-bar.indet > i { width: 35%; animation: slide 1.4s ease-in-out infinite; }
+@keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+.dock-count { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dock-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spinner { width: 13px; height: 13px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--text); animation: spin .8s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .overlay { position: fixed; inset: 0; background: rgba(10, 16, 24, .5); display: grid; place-items: center; z-index: 20; padding: 24px; }

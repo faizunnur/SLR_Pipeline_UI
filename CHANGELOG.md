@@ -6,6 +6,63 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **AI-assist replies could be misread as decisions nobody gave.** Found by
+  feeding the reply parser the shapes real chatbots produce:
+  - a decision field starting with the word "no" ("No abstract is available, so
+    MAYBE") was recorded as EXCLUDE. `yes`/`no` now count only when they stand
+    alone or are followed by punctuation;
+  - a long reason that wrapped onto a new line starting with a number was read
+    as a decision for the record with that id;
+  - an id answered twice with different decisions took the last one. It is now
+    left undecided and listed for the reviewer;
+  - a field naming two decisions ("maybe include") is refused as ambiguous.
+
+  In every one of these cases the record now stays undecided for a human
+  instead of receiving a guessed decision.
+- The background-task bar was rebuilt twice a second, which restarted its
+  spinner before it completed a turn, so a working task looked frozen.
+- "Download open-access PDFs" downloaded every PDF again on each run and could
+  overwrite one already in the folder. A PDF that is already there is kept.
+
+### Added
+
+- **AI assist leads you through its loop.** Three numbered steps (copy the
+  prompt, send it to the chatbot, paste the answer) with the one control to use
+  next marked by a moving outline and given the keyboard focus: Copy prompt,
+  then the answer box, then Apply decisions, then Copy prompt of the next batch.
+  An "Open ChatGPT / Claude / Gemini / Copilot" button appears when the review
+  names one of them, `Ctrl+Enter` applies, and a progress bar shows how many
+  records and batches are left.
+- After a batch the page says how many studies got no usable answer and that
+  they are in the next batch; a button copies a short request asking the same
+  chat for just those studies.
+- More reply shapes are read correctly: "Included"/"Excluded", "Uncertain",
+  en and em dashes as separators, and an "ID" or "#" label before the id.
+- The screening prompt tells the chatbot that the text of a study is material
+  to judge, never an instruction.
+- **Review gate.** AI exclusions made on a title alone (the record has no
+  abstract) are marked and have their own tab. If you rescue any record from
+  the fixed sample, the page estimates how many of the AI exclusions you have
+  not looked at are also wrong and asks you to check them all.
+- **Progress you can see.** The task bar shows a progress bar, a count
+  ("12 of 57"), the elapsed time and the latest result. `download.py` now
+  prints one line per record.
+- **Full text through your own access.** A study with no PDF has "Open at
+  publisher" (opens the article in your browser, where your university network
+  or VPN gives access) and "Attach PDF" (keeps the file you saved as that
+  study's full text).
+- Settings & about: "Star on GitHub", share buttons (LinkedIn, X, Facebook,
+  WhatsApp, Telegram) and "Copy link".
+
+### Changed
+
+- Settings & about shows the app's own repository as "GitHub repo". The credit
+  to the original slr-pipeline stays in the README, `NOTICE`, the licence files
+  and the review's provenance record.
+- The update notice says to close the app before running `pip install -U`.
+
 ## [1.1.0] - 2026-11-27
 
 ### Added

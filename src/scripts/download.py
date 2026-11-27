@@ -256,11 +256,27 @@ def main():
     log_rows = []
     manual_rows = []
     n_ok = 0
+    n_total = len(df)
+
+    def progress(position, rid, what):
+        # One line per record, flushed at once: a run over a few hundred studies
+        # takes minutes, and a silent terminal looks exactly like a hung one.
+        print(f"[{position}/{n_total}] {rid}: {what}", flush=True)
+
     # --- core logic: the per-record OA resolution + download loop ---
-    for _, row in df.iterrows():
+    for position, (_, row) in enumerate(df.iterrows(), 1):
         if args.max_downloads is not None and n_ok >= args.max_downloads:
             break
         rid = row["id"]
+        existing = outdir / f"{rid}.pdf"
+        if existing.is_file() and existing.stat().st_size > 0:
+            # Never fetch again, and never overwrite, a PDF that is already there:
+            # it may be one the reviewer obtained through their library and saved here.
+            n_ok += 1
+            log_rows.append({"id": rid, "doi": str(row.get("doi", "") or ""),
+                              "oa_status": "already_present", "method": "", "saved_path": str(existing)})
+            progress(position, rid, "already have this PDF")
+            continue
         doi = str(row.get("doi", "") or "")
         url = str(row.get("url", "") or "")
         title = str(row.get("title", "") or "")
@@ -302,6 +318,7 @@ def main():
                               "method": method or "", "saved_path": ""})
             manual_rows.append({"id": rid, "doi": doi, "title": title, "url": url,
                                  "tried": "|".join(tried), "reason": reason})
+            progress(position, rid, "no open-access copy found")
             continue
 
         dest = outdir / f"{rid}.pdf"
@@ -309,6 +326,7 @@ def main():
         oa_status = "downloaded" if ok else f"failed: {msg}"
         log_rows.append({"id": rid, "doi": doi, "oa_status": oa_status,
                           "method": method, "saved_path": str(dest) if ok else ""})
+        progress(position, rid, f"downloaded ({method})" if ok else f"could not download ({msg})")
         if ok:
             n_ok += 1
         else:

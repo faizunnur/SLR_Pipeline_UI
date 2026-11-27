@@ -1111,8 +1111,24 @@ class ReviewService:
         applied = apply_decisions(pdir / "screening.csv", parsed, state, phase, stage="ta")
         prov.log("assist_response_parsed", phase=phase, n_decided=len(applied.matched),
                  n_include=applied.counts.get("include", 0),
-                 n_exclude=applied.counts.get("exclude", 0), tool=cfg.assist_tool_name)
+                 n_exclude=applied.counts.get("exclude", 0), tool=cfg.assist_tool_name,
+                 n_unparsed=len(parsed.unparsed_lines), n_conflicting=len(parsed.conflicts),
+                 n_missing=len(parsed.missing_ids))
+        left = [str(i) for i in batch_ids
+                if str(i) not in {tui._id_to_str(m) for m in applied.matched}
+                and str(i) not in {tui._id_to_str(m) for m in applied.skipped_decided}]
+        # Ready to paste back into the same chat when the answer could not be read.
+        fix_request = ""
+        if left:
+            fix_request = (
+                "Your answer could not be read for some studies. Answer again for ONLY these "
+                "study ids: " + ", ".join(left) + ".\n"
+                "Return exactly one line per study and nothing else, in this form:\n"
+                "<id> | INCLUDE or EXCLUDE or MAYBE | <short reason>\n"
+                "Use the id from the square brackets in my earlier message. No numbering, "
+                "no table, no extra text.")
         return {"counts": dict(applied.counts), "n_applied": len(applied.matched),
+                "n_left": len(left), "left_ids": left, "fix_request": fix_request,
                 "problems": parsed.problems() + applied.problems()}
 
     def assist_finish(self, run_id: str, phase: int, skipped_ids: list | None = None,
@@ -1157,9 +1173,13 @@ class ReviewService:
             r["id"] = tui._id_to_str(r["id"])
             r["ai"] = str(r.get("reviewer", "")).strip().lower() == AI_REVIEWER
             r["in_sample"] = r["id"] in sample_ids
+            # an exclusion made with no abstract rests on the title alone
+            r["title_only"] = not str(r.pop("abstract", "") or "").strip()
+            r["no_reason"] = not str(r.get("ta_reason", "") or "").strip()
         return {
             "empty": False, "included": included, "excluded": excluded,
             "n_ai_excluded": len(ai_exc), "sample_size": len(sample_ids),
+            "n_ai_title_only": sum(1 for r in excluded if r["ai"] and r["title_only"]),
             "n_undecided": int(_blank_mask(df["ta_decision"]).sum()),
             "done": state.is_stage_done(phase, "review_gate"),
         }
@@ -1360,6 +1380,29 @@ class ReviewService:
                               phase=0, reason=(reason or "").strip(), source="human-review",
                               title=row.get("title", ""), doi=row.get("doi", ""))
         return self._ft_tally(state, prov, final=False)
+
+    def attach_pdf(self, run_id: str, rid: str, path: str) -> dict:
+        """Keep a PDF the reviewer obtained themselves (through their library,
+        campus network or the author) as this study's full text."""
+        state, cfg, prov = self._load(run_id)
+        merged = self._merged(state, cfg)
+        if merged.empty or str(rid) not in set(merged["id"].map(tui._id_to_str)):
+            raise ServiceError(f"No study with id {rid} in the merged set.")
+        source = Path((path or "").strip().strip('"'))
+        if not source.is_file():
+            raise ServiceError("Choose the PDF file first.")
+        if source.stat().st_size > 200 * 1024 * 1024:
+            raise ServiceError("That file is larger than 200 MB.")
+        with open(source, "rb") as f:
+            if b"%PDF-" not in f.read(1024):
+                raise ServiceError(f"{source.name} is not a PDF. Save the article as a PDF and "
+                                   "attach that file.")
+        pdf_dir = state.run_dir / "pdfs"
+        pdf_dir.mkdir(exist_ok=True)
+        dest = pdf_dir / f"{rid}.pdf"
+        shutil.copyfile(source, dest)
+        prov.log("pdf_attached", id=str(rid), file=source.name, interface="desktop")
+        return {"id": str(rid), "pdf": str(dest)}
 
     def finish_fulltext(self, run_id: str) -> dict:
         state, _, prov = self._load(run_id)

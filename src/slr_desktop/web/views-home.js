@@ -299,6 +299,15 @@ S.views.keys = async (el) => {
 };
 
 /* ---- settings & about ---- */
+const REPO_URL = "https://github.com/faizunnur/SLR_Pipeline_UI";
+const SHARE_TEXT = "SLR Pipeline UI: a free desktop app for systematic literature reviews. Search, screening, PRISMA 2020 flow and an audit trail in one window.";
+const SHARE_TARGETS = [
+  ["LinkedIn", "https://www.linkedin.com/sharing/share-offsite/?url=" + encodeURIComponent(REPO_URL)],
+  ["X", "https://twitter.com/intent/tweet?text=" + encodeURIComponent(SHARE_TEXT) + "&url=" + encodeURIComponent(REPO_URL)],
+  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(REPO_URL)],
+  ["WhatsApp", "https://wa.me/?text=" + encodeURIComponent(SHARE_TEXT + " " + REPO_URL)],
+  ["Telegram", "https://t.me/share/url?url=" + encodeURIComponent(REPO_URL) + "&text=" + encodeURIComponent(SHARE_TEXT)],
+];
 S.views.about = async (el) => {
   const info = S.info;
   const upd = h("span.muted", "");
@@ -318,15 +327,20 @@ S.views.about = async (el) => {
         S.info.theme = t; applyTheme(t); await tryCall("set_theme", t); render(); })),
     h("div.card.stack", h("h2", "About"),
       h("dl.kv", h("dt", "App"), h("dd", info.app + " " + info.version), h("dt", "Python"), h("dd", info.python),
-        h("dt", "Built on"), h("dd", "slr-pipeline " + (info.upstream_version || "") + " by Md Nayeem Hossain – ",
-          h("a", { onclick: () => tryCall("open_url", "https://github.com/nayeem-hossain/slr-pipeline") }, "github.com/nayeem-hossain/slr-pipeline")),
-        h("dt", "This app"), h("dd", h("a", { onclick: () => tryCall("open_url", "https://github.com/faizunnur/SLR_Pipeline_UI") }, "github.com/faizunnur/SLR_Pipeline_UI")),
+        h("dt", "GitHub repo"), h("dd", h("a", { onclick: () => tryCall("open_url", REPO_URL) }, REPO_URL.replace("https://", ""))),
         h("dt", "License"), h("dd", "MIT (code), CC BY 4.0 (documentation). The original pipeline's copyright notice is kept.")),
       h("div.row", h("button.btn.sm", { onclick: async () => {
         upd.textContent = "Checking…";
         const r = await tryCall("check_update");
-        upd.textContent = !r ? "" : r.outcome === "outdated" ? "Version " + r.latest + " is available. Update with: pip install -U slr-pipeline-ui"
+        upd.textContent = !r ? "" : r.outcome === "outdated" ? "Version " + r.latest + " is available. Close this app first, then run: pip install -U slr-pipeline-ui"
           : r.outcome === "up_to_date" ? "You are up to date." : r.outcome === "dev_build" ? "Running from source; version check does not apply."
           : "Could not check right now (offline or GitHub unreachable).";
-      } }, "Check for updates"), upd))));
+      } }, "Check for updates"), upd)),
+    h("div.card.stack", h("h2", "Help other researchers find it"),
+      h("p.muted", "This app is free. A star on GitHub, or a share with your lab or class, is how other researchers come to know about it."),
+      h("div.row.wrap",
+        h("button.btn.primary", { onclick: () => tryCall("open_url", REPO_URL) }, "Star on GitHub"),
+        SHARE_TARGETS.map(([name, url]) => h("button.btn", { onclick: () => tryCall("open_url", url) }, name)),
+        h("button.btn", { onclick: () => copyText(SHARE_TEXT + " " + REPO_URL, "Link") }, "Copy link")),
+      h("p.small.faint", "Each button opens that site in your browser with a ready-made post. Nothing is posted until you press its own Post or Send button."))));
 };

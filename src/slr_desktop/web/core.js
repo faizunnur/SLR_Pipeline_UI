@@ -270,7 +270,7 @@ async function startJob(apiName, args, onDone) {
   if (S.job && S.job.status === "running") { toast("Another task is still running.", true); return; }
   let started;
   try { started = await call(apiName, ...(args || [])); } catch (e) { toast(e.message, true); return; }
-  S.job = { id: started.job_id, title: started.title, status: "running", lines: [], next: 0, open: true, onDone };
+  S.job = { id: started.job_id, title: started.title, status: "running", lines: [], next: 0, open: true, onDone, started: Date.now() };
   renderDock();
   pollJob();
 }
@@ -288,25 +288,66 @@ async function pollJob() {
   if (job.onDone) { try { await job.onDone(st); } catch (e) { /* view already gone */ } }
   render();
 }
+/* The dock is built once per task state and then updated in place. Rebuilding it
+   on every poll restarted its animations twice a second, so the spinner never
+   completed a turn and a working task looked frozen. */
+function jobProgress(job) {
+  for (let i = job.lines.length - 1; i >= 0 && i > job.lines.length - 40; i--) {
+    const m = /^\[(\d+)\/(\d+)\]/.exec(job.lines[i]);
+    if (m && Number(m[2]) > 0) return { n: Number(m[1]), total: Number(m[2]) };
+  }
+  return null;
+}
+function elapsed(job) {
+  if (!job.started) return "";
+  const s = Math.max(0, Math.round((Date.now() - job.started) / 1000));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+let dockEls = null;
 function renderDock() {
   const dock = $("#dock");
   const job = S.job;
-  if (!job) { dock.classList.add("hidden"); return; }
+  if (!job) { dock.classList.add("hidden"); dockEls = null; return; }
   dock.classList.remove("hidden");
   const running = job.status === "running";
-  const state = { running: "Running", done: "Finished", failed: "Failed", cancelled: "Cancelled" }[job.status] || job.status;
-  const head = h("div.dock-head",
-    running ? h("span.spinner", { "aria-hidden": "true" }) : h("span.badge" + (job.status === "done" ? ".inc" : ".exc"), state),
-    h("strong", job.title),
-    h("span.muted.small.grow", running ? (job.lines[job.lines.length - 1] || "") .slice(0, 110) : ""),
-    h("button.btn.sm.ghost", { onclick: () => { job.open = !job.open; renderDock(); } }, job.open ? "Hide log" : "Show log"),
-    running ? h("button.btn.sm.danger", { onclick: () => tryCall("job_cancel", job.id) }, "Cancel")
-            : h("button.btn.sm.ghost", { onclick: () => { S.job = null; renderDock(); } }, "Dismiss"));
-  clear(dock).append(head);
-  if (job.open) {
-    const pre = h("pre", { "aria-live": "polite" }, job.lines.join("\n") || "Starting…");
-    dock.append(pre);
-    pre.scrollTop = pre.scrollHeight;
+  const key = job.id + "|" + job.status + "|" + job.open;
+  if (!dockEls || dockEls.key !== key) {
+    const state = { running: "Running", done: "Finished", failed: "Failed", cancelled: "Cancelled" }[job.status] || job.status;
+    const els = { key, shown: 0, count: h("span.dock-count"), bar: h("i"), last: h("span.muted.small.grow.dock-last"), pre: null };
+    els.track = h("div.progress.dock-bar", { role: "progressbar", "aria-label": "Progress of this task" }, els.bar);
+    const head = h("div.dock-head",
+      running ? h("span.spinner", { "aria-hidden": "true" }) : h("span.badge" + (job.status === "done" ? ".inc" : ".exc"), state),
+      h("strong", job.title), running ? els.track : null, running ? els.count : null, els.last,
+      h("button.btn.sm.ghost", { onclick: () => { job.open = !job.open; renderDock(); } }, job.open ? "Hide log" : "Show log"),
+      running ? h("button.btn.sm.danger", { onclick: () => tryCall("job_cancel", job.id) }, "Cancel")
+              : h("button.btn.sm.ghost", { onclick: () => { S.job = null; renderDock(); } }, "Dismiss"));
+    clear(dock).append(head);
+    if (job.open) { els.pre = h("pre", { "aria-live": "off" }); dock.append(els.pre); }
+    dockEls = els;
+  }
+  const els = dockEls;
+  if (running) {
+    const prog = jobProgress(job), time = elapsed(job);
+    els.track.classList.toggle("indet", !prog);
+    els.bar.style.width = prog ? Math.round((100 * prog.n) / prog.total) + "%" : "";
+    if (prog) { els.track.setAttribute("aria-valuenow", prog.n); els.track.setAttribute("aria-valuemax", prog.total); }
+    els.count.textContent = (prog ? prog.n + " of " + prog.total : "Working") + (time ? " · " + time : "");
+    // the newest line that says something (not the command that was started)
+    let last = "";
+    for (let i = job.lines.length - 1; i >= 0 && !last; i--) if (job.lines[i].trim() && !job.lines[i].startsWith("$ ")) last = job.lines[i];
+    els.last.textContent = last.replace(/^\[\d+\/\d+\]\s*/, "").slice(0, 110);
+  }
+  if (els.pre) {
+    const fresh = job.lines.slice(els.shown);
+    if (!job.lines.length) els.pre.textContent = "Starting…";
+    else if (fresh.length) {
+      // keep following the end unless the reader scrolled up to look at something
+      const atEnd = !els.shown || els.pre.scrollHeight - els.pre.scrollTop - els.pre.clientHeight < 40;
+      if (!els.shown) els.pre.textContent = "";
+      els.pre.append((els.shown ? "\n" : "") + fresh.join("\n"));
+      els.shown = job.lines.length;
+      if (atEnd) els.pre.scrollTop = els.pre.scrollHeight;
+    }
   }
 }
 const jobRunning = () => !!(S.job && S.job.status === "running");

@@ -138,6 +138,19 @@ class Api:
         return picked[0] if isinstance(picked, (list, tuple)) else picked
 
     @_safe
+    def choose_pdf(self):
+        if self._window is None:
+            raise ServiceError("In browser mode, attaching a PDF is not available. Copy the file "
+                               "into the review's pdfs folder and name it <study id>.pdf.")
+        import webview
+        kind = getattr(getattr(webview, "FileDialog", None), "OPEN", None) or webview.OPEN_DIALOG
+        picked = self._window.create_file_dialog(
+            kind, directory=str(Path.home() / "Downloads"), file_types=("PDF files (*.pdf)", "All files (*.*)"))
+        if not picked:
+            return None
+        return picked[0] if isinstance(picked, (list, tuple)) else picked
+
+    @_safe
     def start_import(self, run_id, phase, path, source, query="", searched_on=""):
         return _job(self._svc.start_import(run_id, phase, path, source, query, searched_on))
 
@@ -235,6 +248,6 @@ for _name in (
     "update_extraction", "export_references", "export_exclusions", "write_provenance",
     "write_methods", "write_self_appraisal", "kappa", "diagnose", "provenance_events",
     "outputs", "read_text", "api_keys", "set_api_key", "delete_api_key", "delete_run",
-    "preview_import", "list_imports", "set_screening_aids", "restore_decision",
+    "preview_import", "list_imports", "attach_pdf", "set_screening_aids", "restore_decision",
 ):
     setattr(Api, _name, _forward(_name))

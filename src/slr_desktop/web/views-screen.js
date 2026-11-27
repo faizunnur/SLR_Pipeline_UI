@@ -270,15 +270,27 @@ S.views["run:screening"] = async (el) => {
     afterDecide: quietRunRefresh });
 };
 
+/* AI assist is a loop of three moves: copy the prompt, send it to a chatbot,
+   paste the answer back. The page always marks the ONE control to use next (a
+   pulsing outline and the keyboard focus), so nobody has to work out the order:
+   Copy prompt -> the reply box -> Apply decisions -> Copy prompt of the next batch. */
+const CHATBOTS = [[/chatgpt|openai|gpt/i, "ChatGPT", "https://chatgpt.com/"], [/claude/i, "Claude", "https://claude.ai/new"],
+  [/gemini|bard/i, "Gemini", "https://gemini.google.com/app"], [/copilot/i, "Copilot", "https://copilot.microsoft.com/"],
+  [/deepseek/i, "DeepSeek", "https://chat.deepseek.com/"]];
 async function assistPanel(el, run, p, as) {
   if (!as.batch) as.batch = await call("assist_batch", run.run_id, p.phase, as.skipped);
   const b = as.batch;
+  if (!as.step) as.step = 1;
   if (as.last) {
-    const c = as.last.counts;
-    el.append(h("div.banner" + (as.last.problems.length ? ".warn" : ".good"), { style: "margin-bottom:14px" }, h("div",
-      h("strong", "Last batch: " + as.last.n_applied + " decision(s) applied. "),
+    const c = as.last.counts, left = as.last.n_left || 0;
+    el.append(h("div.banner" + (as.last.problems.length ? ".warn" : ".good"), { style: "margin-bottom:14px" }, h("div.grow",
+      h("strong", "Last batch: " + as.last.n_applied + " decision(s) saved. "),
       Object.entries(c).map(([k, v]) => v + " " + k).join(", "),
-      as.last.problems.map((x) => h("div.small", x)))));
+      left ? h("div", { style: "margin-top:4px" }, h("strong", left + " study/studies got no usable answer and are still undecided. "),
+        b.done ? "Screen them by hand." : "They are in the next batch below, so you do not need to do anything special.") : null,
+      as.last.problems.map((x) => h("div.small.muted", x))),
+      left && as.last.fix_request ? h("button.btn.sm", { title: "A short message for the same chat, asking only for the studies that were not answered",
+        onclick: () => copyText(as.last.fix_request, "Request") }, "Copy a request for just these") : null));
   }
   if (b.done) {
     const fin = await call("assist_finish", run.run_id, p.phase, as.skipped, as.totals);
@@ -291,9 +303,12 @@ async function assistPanel(el, run, p, as) {
         as.skipped.length ? h("button.btn", { onclick: () => { as.skipped = []; as.batch = null; render(); } }, "Retry skipped records with AI") : null)));
     return;
   }
+  const bot = CHATBOTS.find(([re]) => re.test(b.tool));
+  const botName = bot ? bot[1] : b.tool;
   const state = { ack: !b.criteria_missing };
-  const reply = h("textarea.prompt-box", { placeholder: "Paste the chatbot's whole answer here.\nOne line per study, for example:\n12 | INCLUDE | on-topic empirical study", "aria-label": "Chatbot reply" });
+  const total = p.n_rows || b.n_undecided, doneCount = Math.max(total - b.n_undecided, 0);
   const body = h("div.stack");
+
   const drawBody = () => {
     clear(body);
     if (b.criteria_missing) {
@@ -302,24 +317,68 @@ async function assistPanel(el, run, p, as) {
         h("label.check", h("input", { type: "checkbox", checked: state.ack, onchange: (e) => { state.ack = e.target.checked; drawBody(); } }), "Use the generic prompt anyway")));
       if (!state.ack) return;
     }
+    const stepEls = [["Copy the prompt", "one click"], ["Send it to " + botName, "paste, then wait for the answer"], ["Paste the answer here", "then apply the decisions"]]
+      .map(([label, sub], i) => h("li", h("span.n", String(i + 1)), h("span", h("strong", label), h("span.small.muted", sub))));
+    const copyBtn = h("button.btn.primary", "Copy prompt");
+    const applyBtn = h("button.btn.primary", "Apply decisions", h("kbd", "Ctrl Enter"));
+    const reply = h("textarea.prompt-box", { placeholder: "Paste the chatbot's whole answer here.\nOne line per study, for example:\n12 | INCLUDE | on-topic empirical study", "aria-label": "Chatbot reply" });
+    const hint = h("p.assist-hint", { role: "status" });
+    const openBot = bot ? h("button.btn", { onclick: () => tryCall("open_url", bot[2]) }, "Open " + bot[1]) : null;
+
+    const show = (focus) => {
+      const step = as.step;
+      stepEls.forEach((li, i) => { li.className = i + 1 < step ? "done" : i + 1 === step ? "now" : ""; });
+      copyBtn.classList.toggle("cue", step === 1);
+      reply.classList.toggle("cue", step === 2);
+      applyBtn.classList.toggle("cue", step === 3);
+      if (openBot) openBot.classList.toggle("primary", step === 2);
+      clear(hint).append(step === 1 ? "Start here: press Copy prompt."
+        : step === 2 ? "Copied. Now go to " + botName + ", paste the prompt into a new chat and send it. When it has answered, copy its whole answer and paste it into the box marked below."
+        : "Answer pasted. Press Apply decisions. The next batch then appears and you start again at Copy prompt.");
+      if (!focus) return;
+      const target = step === 1 ? copyBtn : step === 2 ? reply : applyBtn;
+      if (step === 2) reply.scrollIntoView({ block: "center", behavior: "smooth" });
+      target.focus({ preventScroll: step === 2 });
+    };
+    const apply = async () => {
+      if (!reply.value.trim()) { as.step = 2; show(true); toast("Paste the chatbot's answer into the box first.", true); return; }
+      const out = await tryCall("assist_apply", run.run_id, p.phase, b.start, b.batch_ids, reply.value);
+      if (!out) return;
+      for (const [k, v] of Object.entries(out.counts)) as.totals[k] = (as.totals[k] || 0) + v;
+      as.last = out; as.batch = null; as.step = 1;
+      await quietRunRefresh();
+      await render();
+      $("#view").scrollTop = 0;
+    };
+    copyBtn.addEventListener("click", async () => {
+      as.step = reply.value.trim() ? 3 : 2; show(false);
+      // move the focus only after the copy is over: the copy fallback borrows the focus for a moment
+      try { await copyText(b.prompt, "Prompt"); } catch (e) { /* copyText reports its own failure */ }
+      show(true);
+    });
+    reply.addEventListener("input", () => { const next = reply.value.trim() ? 3 : 2; if (next !== as.step) { as.step = next; show(false); } });
+    reply.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); apply(); } });
+    applyBtn.addEventListener("click", apply);
+
     body.append(
       h("div.card.stack",
-        h("div.row", h("h2.grow", "1. Copy this prompt into " + b.tool),
-          h("button.btn.primary", { onclick: () => copyText(b.prompt, "Prompt") }, "Copy prompt")),
-        h("p.small.muted", "Batch of " + b.batch_ids.length + " record(s). " + b.n_undecided + " undecided in this phase (" + b.n_batches + " batch" + (b.n_batches > 1 ? "es" : "") + " left). The prompt is also saved as " + b.prompt_file.split(/[\\/]/).pop() + "."),
-        h("textarea.prompt-box", { readonly: true, "aria-label": "Screening prompt" }, b.prompt)),
+        h("div.row.wrap", h("strong", "Batch of " + b.batch_ids.length + " records"),
+          h("span.small.muted", doneCount + " of " + total + " decided · " + b.n_batches + " batch" + (b.n_batches > 1 ? "es" : "") + " to go"), h("span.grow")),
+        progress(doneCount, total),
+        h("ol.steps", stepEls), hint),
       h("div.card.stack",
-        h("h2", "2. Paste the chatbot's reply"), reply,
-        h("div.row.wrap",
-          h("button.btn.primary", { onclick: async () => {
-            const out = await tryCall("assist_apply", run.run_id, p.phase, b.start, b.batch_ids, reply.value);
-            if (!out) return;
-            for (const [k, v] of Object.entries(out.counts)) as.totals[k] = (as.totals[k] || 0) + v;
-            as.last = out; as.batch = null; render();
-          } }, "Apply decisions"),
-          h("button.btn", { onclick: () => { as.skipped.push(...b.batch_ids); as.batch = null; as.last = null; toast("Batch left for manual screening."); render(); } }, "Skip this batch"),
+        h("div.row.wrap", h("h2.grow", "1. The prompt for " + botName), copyBtn, openBot),
+        h("p.small.muted", "It holds your criteria and this batch's " + b.batch_ids.length + " records. Also saved as " + b.prompt_file.split(/[\\/]/).pop() + " in the review folder."),
+        h("details", h("summary.small", { style: "cursor:pointer" }, "Show the prompt"),
+          h("textarea.prompt-box", { readonly: true, "aria-label": "Screening prompt", style: "margin-top:8px" }, b.prompt))),
+      h("div.card.stack",
+        h("h2", "2. The chatbot's answer"), reply,
+        h("div.row.wrap", applyBtn,
+          h("button.btn", { onclick: () => { as.skipped.push(...b.batch_ids); as.batch = null; as.last = null; as.step = 1; toast("Batch left for manual screening."); render(); } }, "Skip this batch"),
           h("span.grow"),
-          h("span.small.muted", "Replies are checked against this batch: an id the chatbot invents is refused, and existing decisions are never overwritten."))));
+          h("span.small.muted", { style: "max-width:52ch" }, "Checked against this batch: an invented id is refused, an unclear or contradictory line is left undecided, and a decision you already made is never overwritten."))));
+    setTimeout(() => { if (document.contains(copyBtn)) show(as.step === 1); }, 80);
+    show(false);
   };
   drawBody();
   el.append(body);
@@ -340,6 +399,8 @@ S.views["run:fulltext"] = async (el) => {
     el.append(h("div.banner.warn", { style: "margin-bottom:14px" }, h("div", h("strong", "No phase has passed its review gate yet. "),
       "The list below reflects title/abstract decisions that are not confirmed.")));
   }
+  if (data.rows.some((r) => !r.pdf)) el.append(h("p.small.muted", { style: "margin-bottom:12px;max-width:86ch" },
+    "“Download open-access PDFs” fetches only what is free to read. For the rest, connect to your university network or VPN, use “Open at publisher” on the study, save the PDF, and add it with “Attach PDF”."));
   if (data.done) el.append(h("div.banner.good", { style: "margin-bottom:14px" }, h("div.grow", h("strong", "Full-text screening is complete. "),
     data.rows.filter((r) => r.ft_decision === "include").length + " study/studies included."),
     h("button.btn.sm", { onclick: () => go(runPath(run.run_id, "extraction")) }, "Go to extraction")));
@@ -355,7 +416,16 @@ S.views["run:fulltext"] = async (el) => {
     emptyText: "No study has passed title/abstract screening yet.",
     doneText: "Every study has a full-text decision.",
     byline: (r) => h("span", "passed title/abstract as " + (r.ta_decision || "include") + (r.phase !== "" ? " · phase " + r.phase : "")),
-    meta: (r) => (r.pdf ? h("button.btn.sm", { onclick: () => openPath(r.pdf) }, "Open PDF") : h("span.faint", "No PDF downloaded")),
+    meta: (r) => (r.pdf ? h("button.btn.sm", { onclick: () => openPath(r.pdf) }, "Open PDF") : [
+      h("span.faint", "No PDF yet"),
+      r.doi || (r.url && String(r.url).startsWith("http")) ? h("button.btn.sm", { title: "Opens the article in your browser. On your university network or VPN the full text is usually available there.",
+        onclick: () => tryCall("open_url", r.doi ? "https://doi.org/" + r.doi : r.url) }, "Open at publisher") : null,
+      h("button.btn.sm", { title: "Keep a PDF you saved yourself as this study's full text", onclick: async () => {
+        const picked = await tryCall("choose_pdf");
+        if (!picked) return;
+        const out = await tryCall("attach_pdf", run.run_id, r.id, picked);
+        if (out) { r.pdf = out.pdf; toast("PDF attached to study " + r.id + "."); render(); }
+      } }, "Attach PDF…")]),
     decide: async (r, d, reason) => {
       const out = await call("set_ft_decision", run.run_id, r.id, d, reason);
       r.ft_decision = d; r.ft_reason = reason;

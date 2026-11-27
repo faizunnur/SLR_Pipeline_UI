@@ -261,7 +261,8 @@ S.views["run:gate"] = async (el) => {
         h("td", h("div", { style: "font-weight:550" }, r.title),
           h("div.small.muted", [fmt.year(r.year), r.venue].filter(Boolean).join(" · ")),
           r.ta_reason ? h("div.small", { style: "margin-top:3px" }, "Reason: " + r.ta_reason) : null),
-        h("td", tag(r.ta_decision), r.ai ? h("div.small.faint", "AI suggested") : h("div.small.faint", r.reviewer || "")),
+        h("td", tag(r.ta_decision), r.ai ? h("div.small.faint", "AI suggested") : h("div.small.faint", r.reviewer || ""),
+          r.ai && r.ta_decision === "exclude" && r.title_only ? h("div", h("span.badge.may", { title: "This record has no abstract, so the AI judged it on the title alone" }, "title only")) : null),
         h("td", h("button.btn.sm." + cls + (flipped ? ".on" : ""), { "aria-pressed": flipped,
           onclick: () => { flipped ? flipSet.delete(r.id) : flipSet.add(r.id); render(); } }, flipped ? "Will " + flipLabel.toLowerCase() : flipLabel)));
     }) : h("tr", h("td", { colspan: 4, class: "muted" }, "None.")))));
@@ -269,12 +270,24 @@ S.views["run:gate"] = async (el) => {
   let shown = data.excluded;
   if (gs.show === "sample") shown = data.excluded.filter((r) => r.in_sample);
   else if (gs.show === "ai") shown = data.excluded.filter((r) => r.ai);
+  else if (gs.show === "title") shown = data.excluded.filter((r) => r.ai && r.title_only);
+  // What the sample says about the AI exclusions nobody looked at.
+  const sampled = data.excluded.filter((r) => r.in_sample), rescued = sampled.filter((r) => gs.toInclude.has(r.id));
+  const unchecked = data.n_ai_excluded - sampled.length;
+  const estimate = sampled.length ? Math.round((rescued.length / sampled.length) * unchecked) : 0;
   el.append(h("div.stack",
     h("div", h("div.row", { style: "margin-bottom:8px" }, h("h2", "Proceeding to full text"), h("span.badge.inc", String(data.included.length)),
       h("span.small.muted", "include and maybe both proceed")), table(data.included, gs.toExclude, "Exclude", "exc")),
     h("div", h("div.row.wrap", { style: "margin-bottom:8px" }, h("h2", "Excluded"), h("span.badge.exc", String(data.excluded.length)),
       h("span.grow"),
-      seg([["sample", "AI sample (" + data.sample_size + ")"], ["ai", "All AI (" + data.n_ai_excluded + ")"], ["all", "All"]], gs.show, (v) => { gs.show = v; render(); })),
+      seg([["sample", "AI sample (" + data.sample_size + ")"], ["ai", "All AI (" + data.n_ai_excluded + ")"]]
+        .concat(data.n_ai_title_only ? [["title", "Title only (" + data.n_ai_title_only + ")"]] : []).concat([["all", "All"]]), gs.show, (v) => { gs.show = v; render(); })),
+      rescued.length && unchecked > 0 ? h("div.banner.warn", { style: "margin-bottom:8px" }, h("div.grow",
+        h("strong", "You rescued " + rescued.length + " of the " + sampled.length + " sampled AI exclusions. "),
+        "At that rate about " + Math.max(estimate, 1) + " of the " + unchecked + " AI exclusions you have not looked at are also wrong. Check all of them before you confirm."),
+        h("button.btn.sm", { onclick: () => { gs.show = "ai"; render(); } }, "Show all AI exclusions")) : null,
+      data.n_ai_title_only && gs.show !== "title" ? h("p.small.muted", { style: "margin-bottom:8px" },
+        data.n_ai_title_only + " AI exclusion(s) were made on the title alone because the record has no abstract. They are the ones most worth a second look.") : null,
       data.n_ai_excluded ? h("p.small.muted", { style: "margin-bottom:8px" },
         "A false exclusion is invisible unless you look. The sample is fixed for this phase, so re-opening the gate shows the same records.") : null,
       table(shown, gs.toInclude, "Rescue", "inc"))));

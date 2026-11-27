@@ -178,10 +178,10 @@ class TestJsonPathDoesNotSilentlyDropItems:
     def test_unrecognized_decision_word_is_reported_not_silently_dropped(self):
         r = parse_screening_response(
             '[{"id": 61, "decision": "include", "reason": "on-topic"}, '
-            '{"id": 3, "decision": "Included", "reason": "wrong casing"}]',
+            '{"id": 3, "decision": "Accepted", "reason": "not a decision word"}]',
             valid_ids=[61, 3])
         assert {d["id"] for d in r.decisions} == {61}
-        assert any("3" in u and "Included" in u for u in r.unparsed_lines)
+        assert any("3" in u and "Accepted" in u for u in r.unparsed_lines)
         assert r.missing_ids == [3]
 
     def test_missing_decision_key_is_reported(self):

@@ -128,7 +128,23 @@ Two modes, switched at the top:
   judged in another phase shows that earlier decision as a hint.
 - **AI assist (copy and paste).** The app shows a prompt for the next batch of
   20 undecided records. Copy it into any web chatbot, paste the answer back,
-  and press *Apply decisions*. Nothing is sent anywhere by the app. A reply
+  and press *Apply decisions*. Nothing is sent anywhere by the app. Three
+  numbered steps show where you are, and the control to use next has a moving
+  outline and the keyboard focus, so the loop is: *Copy prompt*, the answer box,
+  *Apply decisions* (or `Ctrl+Enter`), then *Copy prompt* for the next batch.
+
+  How an answer is read, and what the app refuses to guess:
+
+  | The chatbot wrote | What happens |
+  |---|---|
+  | `12 \| INCLUDE \| reason` (also Included, Yes, tables, JSON, `12: Include - reason`) | Recorded |
+  | An id that was not in the batch | Refused |
+  | The same id twice with different decisions | Left undecided, listed for you |
+  | A field that is not one clear decision ("No abstract, so maybe", "maybe include") | Left undecided |
+  | A numbered list without ids (`1. INCLUDE`) | Left undecided: position is not identity |
+  | A decision for a record you already decided | Your decision is kept |
+
+  Studies left undecided are in the next batch automatically. A reply
   line for an id that was not in the batch is refused, and a record that
   already has a decision is left alone. *Skip this batch* leaves those records
   for manual screening.
@@ -138,6 +154,12 @@ Two modes, switched at the top:
 Shows what proceeds to full text and what was excluded. For AI exclusions the
 default view is the fixed sample of 20 the method asks you to check (seeded by
 the phase number, so it is the same every time); you can also list all of them.
+AI exclusions made on a title alone, because the record has no abstract, carry
+a *title only* mark and have their own tab: they are the least well-founded and
+the first to check. If you rescue a record from the sample, the page estimates
+how many of the unchecked AI exclusions are wrong at the same rate and asks you
+to go through all of them.
+
 Mark records to exclude or rescue, then **Confirm gate**. The gate cannot be
 confirmed while any record in the phase has no decision.
 
@@ -153,7 +175,18 @@ typed or picked from the quick reasons. Highlighted words and undo work here as
 they do at title/abstract screening; undoing a decision after the stage was
 complete re-opens it.
 *Download open-access PDFs* fetches what is legally available; a downloaded PDF
-gets an *Open PDF* button on its record.
+gets an *Open PDF* button on its record. A PDF that is already in the folder is
+kept, never fetched again or overwritten.
+
+For a study with no open-access copy, use your own access: connect to your
+university network or VPN, press *Open at publisher* (the article opens in your
+browser), save the PDF, and add it with *Attach PDF*. The app does not download
+subscription content by itself: publishers' terms forbid automated bulk
+downloading, and a university can lose its access over it.
+
+Everything the app fetches goes out through your own computer's connection. A
+Scopus key that only works on campus therefore works whenever your computer is
+on the campus network or its VPN, with nothing to set up.
 
 ### Extraction
 

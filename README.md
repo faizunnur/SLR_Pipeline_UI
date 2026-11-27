@@ -31,8 +31,10 @@ other.
 - **Faster reading.** Your search keywords are highlighted in every abstract,
   plus your own "include" and "exclude" words. A row of exclusion reasons lets
   you exclude with a reason in one key (`1` to `9`), and `U` undoes a slip.
-- **AI assist without files.** Copy the prompt with one button, paste the
-  chatbot's reply into a box, and apply it. The reply is still checked against
+- **AI assist without files.** The page walks you through it: copy the prompt,
+  send it to your chatbot, paste the answer, apply; then the next batch. A line
+  the app cannot read with certainty leaves that record undecided for you
+  instead of guessing. The reply is still checked against
   the batch that was sent, and the prompt and reply are still saved next to the
   review.
 - **A review gate you can see.** Proposed includes and excludes side by side,
@@ -86,6 +88,17 @@ inclusion/exclusion criteria for your own topic; the method does not change.
   `src/srp/` library, command by command.
 - [AI-assist screening](docs/ai-assist.md) - where AI fits in the pipeline,
   the prompt packs it uses, and the guardrails around it.
+
+## Updating
+
+Close the app first (Windows will not replace a program that is running), then:
+
+```
+pip install --upgrade slr-pipeline-ui
+```
+
+With pipx: `pipx upgrade slr-pipeline-ui`. Your reviews and API keys are not
+touched by an update.
 
 ## Installing
 
