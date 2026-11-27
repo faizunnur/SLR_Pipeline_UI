@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-27
+
 ### Changed
 
 - The About page names the developer. The README and the PyPI page credit the
