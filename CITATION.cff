@@ -6,7 +6,7 @@ abstract: "A desktop app for running a systematic literature review end to end: 
 authors:
   - family-names: "Islam"
     given-names: "Md Faizun Nur"
-version: "1.1.0"
+version: "1.2.0"
 date-released: "2026-11-27"
 license: "MIT"
 repository-code: "https://github.com/faizunnur/SLR_Pipeline_UI"

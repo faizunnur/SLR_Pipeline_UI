@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-27
+
 ### Fixed
 
 - **AI-assist replies could be misread as decisions nobody gave.** Found by
