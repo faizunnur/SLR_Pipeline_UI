@@ -54,7 +54,8 @@ from slr_desktop import importer
 from slr_desktop.jobs import JobContext, JobManager
 
 APP_NAME = "SLR Pipeline UI"
-UPSTREAM = "slr-pipeline by Md Nayeem Hossain (https://github.com/nayeem-hossain/slr-pipeline)"
+DEVELOPER = "Md Faizun Nur Islam"
+UPSTREAM = "slr-pipeline"
 
 BATCH_SIZE = tui._BATCH_SIZE
 EXCLUDE_SAMPLE_SIZE = tui._EXCLUDE_SAMPLE_SIZE
@@ -261,7 +262,7 @@ class ReviewService:
     # --- app-level info ----------------------------------------------------
     def app_info(self) -> dict:
         return {
-            "app": APP_NAME, "version": VERSION, "upstream": UPSTREAM,
+            "app": APP_NAME, "version": VERSION, "developer": DEVELOPER, "upstream": UPSTREAM,
             "upstream_version": UPSTREAM_VERSION,
             "workspace": str(self.workspace), "runs_dir": str(self.runs_dir),
             "env_path": str(self.env_path), "python": sys.version.split()[0],

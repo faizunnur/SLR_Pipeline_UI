@@ -34,8 +34,6 @@ dev = ["pytest>=7.0"]
 [project.urls]
 Repository = "https://github.com/faizunnur/SLR_Pipeline_UI"
 Changelog = "https://github.com/faizunnur/SLR_Pipeline_UI/blob/main/CHANGELOG.md"
-"Original project" = "https://github.com/nayeem-hossain/slr-pipeline"
-
 # `slr-ui` starts the desktop app from a terminal (and is the one to use for
 # `--browser` / `--help`, whose output a windowed launcher cannot print on
 # Windows). `slr` is the original guided terminal app, kept unchanged: a review

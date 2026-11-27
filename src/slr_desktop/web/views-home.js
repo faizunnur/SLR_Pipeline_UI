@@ -326,7 +326,9 @@ S.views.about = async (el) => {
       seg([["system", "Match system"], ["light", "Light"], ["dark", "Dark"]], info.theme || "system", async (t) => {
         S.info.theme = t; applyTheme(t); await tryCall("set_theme", t); render(); })),
     h("div.card.stack", h("h2", "About"),
-      h("dl.kv", h("dt", "App"), h("dd", info.app + " " + info.version), h("dt", "Python"), h("dd", info.python),
+      h("dl.kv", h("dt", "App"), h("dd", info.app + " " + info.version),
+        h("dt", "Developer"), h("dd", info.developer || "Md Faizun Nur Islam"),
+        h("dt", "Python"), h("dd", info.python),
         h("dt", "GitHub repo"), h("dd", h("a", { onclick: () => tryCall("open_url", REPO_URL) }, REPO_URL.replace("https://", ""))),
         h("dt", "License"), h("dd", "MIT (code), CC BY 4.0 (documentation). The original pipeline's copyright notice is kept.")),
       h("div.row", h("button.btn.sm", { onclick: async () => {

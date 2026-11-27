@@ -5,12 +5,10 @@ protocol, multi-source search, deduplication, title/abstract screening,
 full-text assessment, data extraction, quality appraisal, PRISMA 2020 figures
 and an audit trail, in one window.
 
-It is a redesigned and enhanced UI for the original SLR Pipeline project, built
-on top of [slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline) by
-Md Nayeem Hossain. The review method, the stage scripts and the guided terminal
-app are his work and ship here with only the small changes listed in the
-changelog; this project adds the desktop app around them. A review folder made in one interface opens in the
-other.
+SLR Pipeline UI is designed and developed by **Md Faizun Nur Islam**. It builds
+on the open-source slr-pipeline project (see [Credits](#credits)) and adds a
+complete desktop app around its review engine. A review folder made in the
+desktop app also opens in the guided terminal app, and the other way round.
 
 ![Review overview: next step, search phases and the PRISMA flow so far](https://raw.githubusercontent.com/faizunnur/SLR_Pipeline_UI/main/docs/img/overview.png)
 
@@ -439,17 +437,15 @@ query-expansion loop between search rounds and the always-on provenance log.
 
 If this software contributes to a published review, please cite it using the
 metadata in `CITATION.cff` (GitHub renders it as the "Cite this repository"
-button), and cite the original
-[slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline) it is built on;
-`CITATION.cff` lists it under `references`. Reviews should also report the
-version used; the provenance report records it automatically.
+button). Reviews should also report the version used; the provenance report
+records it automatically.
 
 ## Credits
 
-The review pipeline, its methodology and the guided terminal app are the work
-of **Md Nayeem Hossain**: [slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline).
-SLR Pipeline UI is built on release 1.3.4 of that project. [`NOTICE`](NOTICE)
-lists which files come from it and which are new here.
+SLR Pipeline UI is designed and developed by **Md Faizun Nur Islam**. It is
+built on release 1.3.4 of slr-pipeline by Md Nayeem Hossain, used under the MIT
+and CC BY 4.0 licences. [`NOTICE`](NOTICE) lists which files come from it and
+which are new here.
 
 ## License
 
@@ -464,5 +460,5 @@ Licensing is split by content type, as in the original project:
   documentation; the changes are stated in that file.
 
 Copyright (c) 2026 Md Faizun Nur Islam (SLR Pipeline UI: the desktop app and the changes
-made in this repository).
-Copyright (c) 2026 Md Nayeem Hossain (the original slr-pipeline).
+made in this repository). The original project's copyright notice is kept in
+[`LICENSE.txt`](LICENSE.txt), as the MIT License requires.

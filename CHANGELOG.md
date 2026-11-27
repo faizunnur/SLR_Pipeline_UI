@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The About page names the developer. The README and the PyPI page credit the
+  original project once, in Credits; the licence files keep its copyright
+  notice unchanged.
+
 ## [1.2.0] - 2026-11-27
 
 ### Fixed
@@ -142,9 +148,8 @@ All notable changes to this project are documented here. Format follows
 
 ## [1.0.0] - 2026-11-27
 
-First release of **slr-pipeline-ui**: a desktop app built on
-[slr-pipeline](https://github.com/nayeem-hossain/slr-pipeline) 1.3.4 by
-Md Nayeem Hossain. Version numbers from here on are this project's own; the
+First release of **slr-pipeline-ui**: a desktop app built on slr-pipeline
+1.3.4. Version numbers from here on are this project's own; the
 entries below 1.0.0 are the upstream project's history, kept for reference.
 
 ### Added
